@@ -6,7 +6,7 @@ import pygame
 
 pygame.init()
 
-server = "192.168.0.24"
+server = ""
 # server = "139.177.194.104"
 port = 5555
 
