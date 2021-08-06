@@ -81,36 +81,43 @@ def threaded_client(conn, p: int, gameId: int):
                     print('Server sent game.')
                     print('is game connected', game.connected())
                 elif len(data) == 3 and data[1] == ':' and (data[0] == '0' or data[0] == '1'):  # received player:column
-                    print('oyyyyyyyyyyyyy')
                     turn, col = int(data[0]), int(data[2])
                     the_row = game.get_next_open_row(col)
+                    msg = data[0] + ':(' + str(the_row) + ',' + str(col) + ')'  # format: turn:(row,col)
+                    for client in clients:
+                        client.sendall(msg.encode('utf-8'))  # send to both clients
+                    # conn.sendall(str.encode(msg))
+                    print('Server sent:', msg)
+                    print(game.print_board(game.board))
+
                     game.drop_piece(the_row, col, turn + 1)
                     if game.is_winner(1):  # if the game is over
                         print(game.print_board(game.board))
                         print('Player 1 has won the game!')
                         game.score[0] += 1
+                        msg = 'P0_WON'
+                        for client in clients:
+                            client.sendall(msg.encode('utf-8'))  # send to both clients
+                        print('Server sent:', msg)
                         # TODO
-                        # label = font1.render("Player 1 wins!", 1, RED)
-                        # pygame.display.update()
-                        # game_over = True
+
                     elif game.is_winner(2):
                         print(game.print_board(game.board))
                         print('Player 2 has won the game!')
                         game.score[1] += 1
-                    msg = data[0] + ':(' + str(the_row) + ',' + str(col) + ')'  # format: turn:(row,col)
-                    for client in clients:
-                        client.sendall(msg.encode('utf-8'))  # send to both clients
-                   # conn.sendall(str.encode(msg))
-                    print('Server sent:', msg)
-                    print(game.print_board(game.board))
+                        msg = 'P1_WON'
+                        for client in clients:
+                            client.sendall(msg.encode('utf-8'))  # send to both clients
+                        print('Server sent:', msg)
 
-                    # p += 1
-                    # p = p % 2  # 0 if turn is even, else 1
-                    not_p = int(not p)
-                    msg = str(not_p) + '_move'  # ask other player for move
-                    for client in clients:
-                        client.sendall(str.encode(msg))
-                    print('Server sent:', msg)
+                    else:  # game is not over yet
+                        # p += 1
+                        # p = p % 2  # 0 if turn is even, else 1
+                        not_p = int(not p)
+                        msg = str(not_p) + '_move'  # ask other player for move
+                        for client in clients:
+                            client.sendall(str.encode(msg))
+                        print('Server sent:', msg)
                 else:
                     conn.sendall(pickle.dumps(game))
 

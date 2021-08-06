@@ -1,8 +1,8 @@
 import sys
 import pygame
-from network import Network
-import pickle
 import socket
+import pickle
+# from network import Network
 
 pygame.init()
 
@@ -23,6 +23,37 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Client')
 
 font1 = pygame.font.SysFont("monospace", 45)
+
+
+class Network:
+    def __init__(self):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.server = "172.105.20.159"
+        self.server = '192.168.0.24'
+        self.port = 5555
+        self.addr = (self.server, self.port)
+        self.p = self.connect()
+
+    def getP(self):
+        return self.p
+
+    def connect(self):
+        try:
+            self.client.connect(self.addr)
+            return self.client.recv(2048).decode()
+        except:
+            print('Error connecting. See network.py')
+
+    def send(self, data):
+        try:
+            self.client.send(str.encode(data))
+            # print('used pickle', flush=True)
+            # return None
+            # return self.client.recv(2048).decode()
+            a = pickle.loads(self.client.recv(2048*2))
+            return a
+        except socket.error as e:
+            return str(e)
 
 
 def draw_board():
@@ -91,22 +122,22 @@ def main():
     got_game = False
 
     while not got_game:
-        try:
-            pass
-            game = n.send("get")
-            print('Game:', game)
-            got_game = game.p0_ready and game.p1_ready
-            print('who is ready ', game.p0_ready, game.p1_ready)
+        # try:
+        pass
+        game = n.send("get")
+        print('Game:', game)
+        got_game = game.p0_ready and game.p1_ready
+        print('who is ready ', game.p0_ready, game.p1_ready)
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
 
             # print(game.con)
-        except:
-            run = False
-            print("Couldn't get game")
-            sys.exit()
+        # except:
+         #   run = False
+         #   print("Couldn't get game")
+         #   sys.exit()
 
     if not (game.p0_ready and game.p1_ready):
         font = pygame.font.SysFont("comicsans", 80)
@@ -168,16 +199,17 @@ def main():
                             the_row = game.get_next_open_row(column)
                             print('the row', the_row)
                             game.drop_piece(the_row, column, player + 1)
+                            updateBoard(game, the_row, column, player + 1)
                             # print(game.board)
                             n.client.send(pending_move.encode('utf-8'))
                             print('Client sent:', pending_move)
                             msg = n.client.recv(1024).decode('utf-8')  # '0_move' or '1_move'
                             game.turn = int(not player)
                             print('Client received1: ', msg)
-                            player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
-                            game.drop_piece(row, col, player_who_just_moved + 1)
-                            updateBoard(game, row, col, player_who_just_moved + 1)
-                            game.print_board(game.board)
+                            # player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
+                            # game.drop_piece(row, col, player_who_just_moved + 1)
+                            # updateBoard(game, row, col, player_who_just_moved + 1)
+                            # game.print_board(game.board)
                             # break
 
             else:
@@ -194,6 +226,19 @@ def main():
                 game.turn = int(not player_who_just_moved)  # can remove game.turn stuff
                 msg = n.client.recv(1024).decode('utf-8')  # '0_move' or '1_move'
                 print('Client received3: ', msg)
+            if len(msg) == 6 and 'WON' in msg:
+                game_winner = int(msg[1])  # 0 or 1
+                if game_winner == player:
+                    label = font1.render("You Won!", 1, player_to_colour[player])
+                else:
+                    label = font1.render("You lost", 1, player_to_colour[player])
+                run = False
+                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE, WIDTH, SQUARE_SIZE))
+                screen.blit(label, (15, HEIGHT - 75))
+                pygame.display.update()
+                pygame.time.wait(1000)
+                menu_screen()
+                # run = False
 
             # updateBoard(game, 0, 3, 0)
             pygame.draw.rect(screen, BLACK,(0, HEIGHT - SQUARE_SIZE, WIDTH, SQUARE_SIZE))
