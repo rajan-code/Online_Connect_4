@@ -15,14 +15,17 @@ BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
-SQUARE_SIZE = 100
+SQUARE_SIZE = 80
 WIDTH = NUM_COLUMNS * SQUARE_SIZE
-HEIGHT = (NUM_ROWS + 2) * SQUARE_SIZE + SQUARE_SIZE
+HEIGHT = (NUM_ROWS + 2) * SQUARE_SIZE + (SQUARE_SIZE)
 RADIUS = (SQUARE_SIZE // 2) - 5
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Client')
 
+font = pygame.font.SysFont("comicsans", 80)
 font1 = pygame.font.SysFont("monospace", 45)
+FONT2 = pygame.font.SysFont("times new roman", 40)  # used for timer
+MEDIUM_FONT = pygame.font.SysFont("times new roman", 60)
 
 
 class Network:
@@ -102,7 +105,7 @@ def main():
     clock = pygame.time.Clock()
     n = Network()
     player = int(n.getP())  # 0 or 1
-    screen.fill((128, 128, 128))
+    screen.fill(BLACK)
     # p0 is red and p1 is yellow
     player_to_colour = {0: RED, 1: YELLOW}
     print("You are player", player)
@@ -111,10 +114,12 @@ def main():
     # peek = n.client.recv(1024, socket.MSG_PEEK).decode('utf-8')
     msg = n.client.recv(1024).decode('utf-8')  # '0_move' or '1_move'
     print('Client received: ', msg)
-    font = pygame.font.SysFont("comicsans", 80)
-    text = font.render("Finding opponent...", 1, (255, 0, 0), True)
+    text = MEDIUM_FONT.render("Finding opponent...", 1, (255, 0, 0), True)
     screen.blit(text, (WIDTH // 2 - text.get_width() // 2,
                        HEIGHT // 2 - text.get_height() // 2))
+    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    screen.blit(main_menu_text, (10, HEIGHT - 75))
     pygame.display.update()
 
     got_game = False
@@ -130,6 +135,10 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
+            if event.type == pygame.MOUSEBUTTONDOWN and main_menu_rect.collidepoint(event.pos):
+                msg = 'P' + str(player) + 'left'
+                n.client.send(str.encode(msg))
+                menu_screen()
 
             # print(game.con)
         # except:
@@ -138,18 +147,27 @@ def main():
          #   sys.exit()
 
     if not (game.p0_ready and game.p1_ready):
-        font = pygame.font.SysFont("comicsans", 80)
-        text = font.render("Finding opponent...", 1, (255, 0, 0), True)
+        print('here')
+        text = MEDIUM_FONT.render("Finding opponent...", 1, (255, 0, 0), True)
         screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
+        main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+        main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+        screen.blit(main_menu_text, (10, HEIGHT - 75))
         pygame.display.update()
     else:
         screen.fill(BLACK)
-        draw_board()
+        text = MEDIUM_FONT.render("Found opponent", 1, (255, 0, 0), True)
+        screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
         pygame.display.update()
+        pygame.time.wait(1000)
+        screen.fill(BLACK)
+        draw_board()
         if player == 0:
             label = font1.render("Your turn", 1, RED)
         else:
             label = font1.render("Opponent's turn", 1, RED)
+        screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
+        pygame.display.update()
 
         while run:
             clock.tick(30)
@@ -234,6 +252,9 @@ def main():
                         print('Client received3: ', msg)
                 if len(msg) == 6 and 'WON' in msg:
                     game_winner = int(msg[1])  # 0 or 1
+                    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+                    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT-SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                    screen.blit(main_menu_text, (10, HEIGHT - 75))
                     if game_winner == player:
                         label = font1.render("You Won! Click to play again.", 1, player_to_colour[player])
                     else:
@@ -249,7 +270,7 @@ def main():
                             if event.type == pygame.QUIT:
                                 pygame.quit()
                                 sys.exit()
-                            if event.type == pygame.MOUSEBUTTONDOWN:
+                            if event.type == pygame.MOUSEBUTTONDOWN and main_menu_rect.collidepoint(event.pos):
                                 run2 = False
                                 menu_screen()
                     # run = False
