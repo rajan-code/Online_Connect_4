@@ -139,7 +139,8 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
             break
 
     print("Lost connection")
-    private_game_ids.remove(gameId)
+    if gameId in private_game_ids:
+        private_game_ids.remove(gameId)
     try:
         del games[gameId]
         print("Closing Game", gameId)
