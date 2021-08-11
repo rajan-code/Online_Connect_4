@@ -25,8 +25,6 @@ RADIUS = (SQUARE_SIZE // 2) - 5
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Client')
 
-BACKGROUND_IMG = pygame.image.load('background.png')
-
 font = pygame.font.SysFont("comicsans", 80)
 font1 = pygame.font.SysFont("monospace", 45)
 FONT2 = pygame.font.SysFont("times new roman", 40)  # used for timer
@@ -38,8 +36,8 @@ SMALL_FONT = pygame.font.SysFont("arial", 30)
 class Network:
     def __init__(self, game_type=''):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # self.server = "172.105.20.159"
-        self.server = 'localhost'
+        self.server = "172.105.20.159"
+        # self.server = 'localhost'
         self.port = 5555
         self.addr = (self.server, self.port)
         self.game_type = game_type  # "public" or "private"
@@ -70,7 +68,7 @@ class Network:
             # print('used pickle', flush=True)
             # return None
             # return self.client.recv(2048).decode()
-            a = pickle.loads(self.client.recv(2048*128))
+            a = pickle.loads(self.client.recv(2048*8))
             return a
         except socket.error as e:
             return str(e)
@@ -290,9 +288,9 @@ def main(game_type='', game_code='', the_network=None):
                 main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT-SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                 screen.blit(main_menu_text, (10, HEIGHT - 75))
                 if game_winner == player:
-                    label = font1.render("You Won! Click to play again.", 1, player_to_colour[player])
+                    label = font1.render("You Won!", 1, player_to_colour[player])
                 else:
-                    label = font1.render("You lost. Click to play again.", 1, player_to_colour[player])
+                    label = font1.render("You lost.", 1, player_to_colour[player])
 
                 pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE*2, WIDTH, SQUARE_SIZE))
                 screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
@@ -368,6 +366,9 @@ def setup_private_game():
     text_input.set_cursor_color(WHITE)
     screen.blit(join_game_text2, (WIDTH // 2 - join_game_text2.get_width() // 2, 475))
     join_game_rect2 = pygame.draw.rect(screen, BLUE, (210, 478, 139, 32), 1)
+    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    screen.blit(main_menu_text, (10, HEIGHT - 75))
     clicked_text_box = False
 
     pygame.display.update()
@@ -406,6 +407,8 @@ def setup_private_game():
                 sys.exit()
                 # break
             if event.type == pygame.MOUSEBUTTONDOWN:
+                if main_menu_rect.collidepoint(event.pos):
+                    menu_screen()
                 if join_game_rect2.collidepoint(event.pos):
                     n = PrivateGameNetwork(1, 'private')
                     print('Client sent: ', 'P2_joined_' + text_input.get_text())
@@ -435,7 +438,6 @@ def menu_screen():
     run = True
     clock = pygame.time.Clock()
     screen.fill(BLACK)
-    # screen.blit(BACKGROUND_IMG, (0, 0))
     title_text = TITLE_FONT.render("Connect 4", 1, (255, 255, 0))
     screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 75))
     pygame.display.update()
@@ -470,7 +472,7 @@ def menu_screen():
     screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width()//2 + 5, pointer + vs_cpu_text.get_height() + 13))
     two_player_text = SMALL_FONT.render("Two Players", 1, WHITE)
     two_player_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width()// 2, pointer + 60 + vs_cpu_text.get_height(), vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
-    screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width()//2 + 5, pointer + two_player_text.get_height() + 20 + vs_cpu_text.get_height()))
+    screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width()//2 + 5, pointer + two_player_text.get_height() + 25 + vs_cpu_text.get_height()))
     pygame.display.update()
     pointer=185+70
 
@@ -491,6 +493,8 @@ def menu_screen():
                     setup_private_game()
                     # main('private')  # change
                 elif two_player_rect.collidepoint(event.pos):  # human vs human (offline)
+                    # n = Network('public')
+                    # g = n.send("get")
                     g = Game(0)
                     g.run(screen)
                     menu_screen()
@@ -525,7 +529,7 @@ def menu_screen():
 
         screen.blit(public_text, (WIDTH // 2 - public_text.get_width() - 35, pointer + online_text.get_height()))
         screen.blit(private_text, (WIDTH // 2 + 35, pointer + online_text.get_height()))
-        screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width() // 2 + 5, 375 + two_player_text.get_height() + 20 + vs_cpu_text.get_height()))
+        screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width() // 2 + 5, 375 + two_player_text.get_height() + 25 + vs_cpu_text.get_height()))
         screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width() // 2 + 5, 375 + vs_cpu_text.get_height() + 13))
         pygame.display.update()
    # main()
