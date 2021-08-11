@@ -352,16 +352,20 @@ def setup_private_game():
     screen.fill(BLACK)
     title_text = TITLE_FONT.render("Private Game", 1, (255, 255, 0))
     screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 75))
+    or_text = SMALL_FONT.render("or", 1, WHITE)
+    screen.blit(or_text, (WIDTH // 2 - or_text.get_width() // 2, 375))
     host_game_text = SMALL_FONT.render("Host Game", 1, BLUE)
     host_game_rect = pygame.draw.rect(screen, BLUE, (210, 278, 139, 32), 1)
     screen.blit(host_game_text, (WIDTH // 2 - host_game_text.get_width() // 2, 275))
     # join_game_text = SMALL_FONT.render("Join Game", 1, BLUE)
     # screen.blit(join_game_text, (WIDTH // 2 - join_game_text.get_width() // 2, 375))
     code_text = SMALL_FONT.render("Enter code: ", 1, BLUE)
-    code_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - code_text.get_width() // 2 - 70 + code_text.get_width(), 440, 60, 27), 1)
+    code_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - code_text.get_width() // 2 - 70 + code_text.get_width(), 440, 60, 27))
     screen.blit(code_text, (WIDTH // 2 - code_text.get_width() // 2 - 70, 430))
     text_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20)
+    text_input.max_string_length = 4
     join_game_text2 = SMALL_FONT.render("Join Game", 1, BLUE)
+    text_input.set_cursor_color(WHITE)
     screen.blit(join_game_text2, (WIDTH // 2 - join_game_text2.get_width() // 2, 475))
     join_game_rect2 = pygame.draw.rect(screen, BLUE, (210, 478, 139, 32), 1)
     clicked_text_box = False
@@ -370,15 +374,31 @@ def setup_private_game():
     run = True
     while run:
         mouse_pos = pygame.mouse.get_pos()
-        curr_events = pygame.event.get()
+        if host_game_rect.collidepoint(mouse_pos):
+            host_game_text = SMALL_FONT.render("Host Game", 1, GREEN)
+            host_game_rect = pygame.draw.rect(screen, GREEN, (210, 278, 139, 32), 1)
+        else:
+            host_game_text = SMALL_FONT.render("Host Game", 1, BLUE)
+            host_game_rect = pygame.draw.rect(screen, BLUE, (210, 278, 139, 32), 1)
+        if join_game_rect2.collidepoint(mouse_pos):
+            join_game_text2 = SMALL_FONT.render("Join Game", 1, GREEN)
+            join_game_rect2 = pygame.draw.rect(screen, GREEN, (210, 478, 139, 32), 1)
+        else:
+            join_game_text2 = SMALL_FONT.render("Join Game", 1, BLUE)
+            join_game_rect2 = pygame.draw.rect(screen, BLUE, (210, 478, 139, 32), 1)
+
         if code_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1:
             clicked_text_box = True
         elif pygame.mouse.get_pressed()[0] == 1:  # clicked on screen but outside text box
             clicked_text_box = False
+        curr_events = pygame.event.get()
         if clicked_text_box:
             x = text_input.update(curr_events)
-            # print(text_input.get_text())  # prints name after enter is pressed
-            screen.blit(text_input.get_surface(), (WIDTH // 2 - code_text.get_width() // 2 - 65 + code_text.get_width(), 440))
+            print(text_input.get_text())  # prints name
+        # pygame.draw.rect(screen, BLACK, (WIDTH // 2 - code_text.get_width() // 2 - 70 + code_text.get_width(), 440, 60, 27), 1)
+        code_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - code_text.get_width() // 2 - 70 + code_text.get_width(), 440, 60, 27))
+        screen.blit(text_input.get_surface(), (WIDTH // 2 - code_text.get_width() // 2 - 65 + code_text.get_width(), 440))
+        pygame.display.update()
         for event in curr_events:
             if event.type == pygame.QUIT:
                 run = False
@@ -405,6 +425,8 @@ def setup_private_game():
                     run = False
                     main('private', game_code, n)  # here
                 print(event.pos)
+        screen.blit(join_game_text2, (WIDTH // 2 - join_game_text2.get_width() // 2, 475))
+        screen.blit(host_game_text, (WIDTH // 2 - host_game_text.get_width() // 2, 275))
         pygame.display.update()
 
 
@@ -444,11 +466,11 @@ def menu_screen():
     online_text = FONT2.render("Offline", 1, BLUE)
     screen.blit(online_text, (WIDTH // 2 - online_text.get_width() // 2, pointer))
     vs_cpu_text = SMALL_FONT.render("Single Player", 1, WHITE)
-    vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width()// 2, pointer + 50 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
-    screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width()//2 + 5, pointer + vs_cpu_text.get_height() + 8))
+    vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width()// 2, pointer + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
+    screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width()//2 + 5, pointer + vs_cpu_text.get_height() + 13))
     two_player_text = SMALL_FONT.render("Two Players", 1, WHITE)
-    two_player_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width()// 2, pointer + 45 + vs_cpu_text.get_height(), vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
-    screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width()//2 + 5, pointer + two_player_text.get_height() + 10 + vs_cpu_text.get_height()))
+    two_player_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width()// 2, pointer + 60 + vs_cpu_text.get_height(), vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
+    screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width()//2 + 5, pointer + two_player_text.get_height() + 20 + vs_cpu_text.get_height()))
     pygame.display.update()
     pointer=185+70
 
@@ -488,11 +510,23 @@ def menu_screen():
                 else:
                     private_text = SMALL_FONT.render("Private", 1, WHITE)
                     private_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 + 30, pointer + 50 - 5, private_text.get_width() + 10, private_text.get_height() + 5), 1)
-
-
+                if two_player_rect.collidepoint(mouse_pos):
+                    two_player_text = SMALL_FONT.render("Two Players", 1, GREEN)
+                    two_player_rect = pygame.draw.rect(screen, GREEN, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 60 + vs_cpu_text.get_height(),vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
+                else:
+                    two_player_text = SMALL_FONT.render("Two Players", 1, WHITE)
+                    two_player_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 60 + vs_cpu_text.get_height(), vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
+                if vs_cpu_rect.collidepoint(mouse_pos):
+                    vs_cpu_text = SMALL_FONT.render("Single Player", 1, GREEN)
+                    vs_cpu_rect = pygame.draw.rect(screen, GREEN, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
+                else:
+                    vs_cpu_text = SMALL_FONT.render("Single Player", 1, WHITE)
+                    vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
 
         screen.blit(public_text, (WIDTH // 2 - public_text.get_width() - 35, pointer + online_text.get_height()))
         screen.blit(private_text, (WIDTH // 2 + 35, pointer + online_text.get_height()))
+        screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width() // 2 + 5, 375 + two_player_text.get_height() + 20 + vs_cpu_text.get_height()))
+        screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width() // 2 + 5, 375 + vs_cpu_text.get_height() + 13))
         pygame.display.update()
    # main()
 

@@ -139,12 +139,14 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
             break
 
     print("Lost connection")
+    private_game_ids.remove(gameId)
     try:
         del games[gameId]
         print("Closing Game", gameId)
     except:
         pass
-    publicIdCount -= 1  # only if game was public
+    if game_type == 'public':
+        publicIdCount -= 1  # only if game was public
     conn.close()
 
 
