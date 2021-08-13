@@ -94,6 +94,8 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         game_id_to_players[gameId].append(client)
                     game = games[gameId]
                     conn.sendall(pickle.dumps(game))  # send rematch game
+                    # for client in the_clients:
+                        # client.send(str.encode('0_move'))
                 elif 'ready' in data2:
                     if data2[1] == '0':
                         game.p0_ready = True
@@ -138,7 +140,6 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         for client in game_id_to_players[gameId]:
                             client.sendall(msg.encode('utf-8'))  # send to both clients
                         print('Server sent:', msg)
-
 
                     elif game.is_winner(2):
                         print(game.print_board(game.board))

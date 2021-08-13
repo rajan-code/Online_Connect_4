@@ -17,6 +17,8 @@ BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
+CYAN = (0, 255, 255)
+
 
 SQUARE_SIZE = 80
 WIDTH = NUM_COLUMNS * SQUARE_SIZE
@@ -142,7 +144,7 @@ def notify_server_and_leave():
     sys.exit(0)
 
 
-def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_score=[0,0]):
+def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_score=(0,0), prev_went_first=0):
     run = True
     clock = pygame.time.Clock()
     screen.fill(BLACK)
@@ -201,8 +203,14 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
              #   sys.exit()
 
         screen.fill(BLACK)
-        text = MEDIUM_FONT.render("Found opponent", 1, (255, 0, 0), True)
+        text = MEDIUM_FONT.render("Found opponent", 1, CYAN, True)
         screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
+        goes_first = 0  # if this is the first game, p0 goes first
+
+        if player == 0:
+            label = font1.render("Your turn", 1, RED)
+        else:
+            label = font1.render("Opponent's turn", 1, RED)
     else:
         n = the_network
         print('old player ', n.p)
@@ -210,24 +218,33 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
         player = int(n.getP())  # 0 or 1
         print('new player ', player)
         game = n.send("get_rematch")
-        msg = '0_move'
-        text = MEDIUM_FONT.render("Starting rematch...", 1, (255, 0, 0), True)
+        # msg = '0_move'
+        # msg = n.client.recv(1024).decode('utf-8')  # '0_move' or '1_move'
+        # print('QHERE ', msg)
+        goes_first = int(not prev_went_first)
+        msg = str(goes_first) + '_move'
+        if player == goes_first:
+            label = font1.render("Your turn", 1, RED)
+        else:
+            label = font1.render("Opponent's turn", 1, RED)
+        text = MEDIUM_FONT.render("Starting rematch...", 1, CYAN, True)
         screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
 
     # both players have joined the game
-
+    if goes_first == 0:  # red goes first
+        goes_first_text = SMALL_FONT.render("Red goes first", 1, RED)
+        screen.blit(goes_first_text, (WIDTH // 2 - goes_first_text.get_width() // 2, HEIGHT // 2 - goes_first_text.get_height() // 2 + text.get_height() + 10))
+    else:
+        goes_first_text = SMALL_FONT.render("Yellow goes first", 1, YELLOW)
+        screen.blit(goes_first_text, (WIDTH // 2 - goes_first_text.get_width() // 2, HEIGHT // 2 - goes_first_text.get_height() // 2 + text.get_height() + 10))
     pygame.display.update()
-    pygame.time.wait(1000)
+    pygame.time.wait(1500)
     screen.fill(BLACK)
     draw_board()
     bug = False
     requested_rematch, opponent_requested_rematch = False, False
-    game.score = prev_score
+    game.score = list(prev_score)
 
-    if player == 0:
-        label = font1.render("Your turn", 1, RED)
-    else:
-        label = font1.render("Opponent's turn", 1, RED)
     screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
     pygame.display.update()
 
@@ -454,7 +471,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 print('Client sent: ', 'rematch_accepted')
                                # n.client.send(str.encode(game_type))
                                # n.p = n.connect()
-                                main(game_type, game_code, n, True, game.score)
+                                main(game_type, game_code, n, True, tuple(game.score), goes_first)
                     try:
                         msg = n.client.recv(1024).decode('utf-8')  # check if opponent requested rematch
                         print('Client received: ', msg)
@@ -476,7 +493,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                             n.client.setblocking(True)  # make socket blocking
                            # n.client.send(str.encode(game_type))
                            # n.p = n.connect()
-                            main(game_type, game_code, n, True, game.score)
+                            main(game_type, game_code, n, True, tuple(game.score), goes_first)
 
                     except BlockingIOError:
                         pass
