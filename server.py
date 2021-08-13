@@ -51,94 +51,120 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
     reply = ""
 
     while True:
-        try:
+        #try:
         # peek = conn.recv(1024*4, socket.MSG_PEEK).decode('utf-8')
-            data2 = conn.recv(1024 * 4).decode()
+        data2 = conn.recv(1024 * 4).decode()
         # data = conn.recv(1024).decode()
-            print('Server received1: ', data)
+        print('Server received1: ', data2)
 
-            if gameId in games:
-                game = games[gameId]
-                print('here1')
-              #  if not game.is_running:
-                  #  game.run()
+        if gameId in games:
+            game = games[gameId]
+            print('here1')
+          #  if not game.is_running:
+              #  game.run()
 
-                if not data2:
-                    break
-                else:
-                    # data = conn.recv(1024*4).decode()
-                    if data2 == "reset":
-                        # game.resetWent()
-                        pass
-                    elif 'ready' in data2:
-                        if data2[1] == '0':
-                            game.p0_ready = True
-                        else:
-                            game.p1_ready = True
-                        game.ready = game.p0_ready and game.p1_ready
-                    elif 'left' in data2:  # a user is no longer searching for opponent
-                        the_player = int(data2[1])
-                        if the_player == 0:
-                            game.p0_ready = False
-                        else:
-                            game.p1_ready = False
-                        game.ready = game.p0_ready and game.p1_ready
-                    elif data2 == 'get':
-                        print('using pickle')
-                        # size = len(pickle.dumps(game, -1))
-                        # print('size of picked obj:', size)
-                        print(game.id, 'aq')
-                        print(len(pickle.dumps(game, -1)))
-                        conn.sendall(pickle.dumps(game))
-                        print('Server sent game.')
-                        print('is game connected', game.connected())
-                    elif len(data2) == 3 and data2[1] == ':' and (data2[0] == '0' or data2[0] == '1'):  # received player:column
-                        turn, col = int(data2[0]), int(data2[2])
-                        the_row = game.get_next_open_row(col)
-                        msg = data2[0] + ':(' + str(the_row) + ',' + str(col) + ')'  # format: turn:(row,col)
+            if not data2:
+                for client in game_id_to_players[gameId]:
+                    print(client._closed)
+                break
+            else:
+                # data = conn.recv(1024*4).decode()
+                if data2 == "reset":
+                    # game.resetWent()
+                    pass
+                elif data2 == 'rematch_accepted':
+                    msg = 'rematch_accepted'
+                    for client in game_id_to_players[gameId]:
+                        if client != conn:
+                            client.sendall(msg.encode('utf-8'))  # send to the other client
+                elif data2 == 'rematch_requested':
+                    msg = 'opponent_requested_rematch'
+                    for client in game_id_to_players[gameId]:
+                        if client != conn:
+                            client.sendall(msg.encode('utf-8'))  # send to the other client
+                elif data2 == 'get_rematch':
+                    the_clients = []
+                    for client in game_id_to_players[gameId]:
+                        the_clients.append(client)
+                    games[gameId] = Game(gameId)
+                    games[gameId].p0_ready, games[gameId].p1_ready = True, True
+                    game_id_to_players[gameId] = []
+                    for client in the_clients:
+                        game_id_to_players[gameId].append(client)
+                    game = games[gameId]
+                    conn.sendall(pickle.dumps(game))  # send rematch game to both players
+                elif 'ready' in data2:
+                    if data2[1] == '0':
+                        game.p0_ready = True
+                    else:
+                        game.p1_ready = True
+                    game.ready = game.p0_ready and game.p1_ready
+                elif 'left' in data2:  # a user is no longer searching for opponent
+                    the_player = int(data2[1])
+                    if the_player == 0:
+                        game.p0_ready = False
+                    else:
+                        game.p1_ready = False
+                    game.ready = game.p0_ready and game.p1_ready
+                elif data2 == 'get':
+                    print('using pickle')
+                    # size = len(pickle.dumps(game, -1))
+                    # print('size of picked obj:', size)
+                    print(game.id, 'aq')
+                    print(len(pickle.dumps(game, -1)))
+                    conn.sendall(pickle.dumps(game))
+                    print('Server sent game.')
+                    print('is game connected', game.connected())
+                elif len(data2) == 3 and data2[1] == ':' and (data2[0] in ['0', '1']):  # received player:column
+                    turn, col = int(data2[0]), int(data2[2])
+                    the_row = game.get_next_open_row(col)
+                    msg = data2[0] + ':(' + str(the_row) + ',' + str(col) + ')'  # format: turn:(row,col)
+                    for client in game_id_to_players[gameId]:
+                        client.send(msg.encode('utf-8'))  # send to both clients
+                    # conn.sendall(str.encode(msg))
+                    print('Server sent:', msg)
+                    print(game.print_board(game.board))
+
+                    game.drop_piece(the_row, col, turn + 1)
+                    if game.is_winner(1):  # if the game is over
+                        print(game.print_board(game.board))
+                        print('Player 1 has won the game!')
+                        game.score[0] += 1
+                        msg = 'P0_WON'
                         for client in game_id_to_players[gameId]:
                             client.sendall(msg.encode('utf-8'))  # send to both clients
-                        # conn.sendall(str.encode(msg))
                         print('Server sent:', msg)
+                        # TODO
+
+                    elif game.is_winner(2):
                         print(game.print_board(game.board))
+                        print('Player 2 has won the game!')
+                        game.score[1] += 1
+                        msg = 'P1_WON'
+                        for client in game_id_to_players[gameId]:
+                            client.sendall(msg.encode('utf-8'))  # send to both clients
+                        print('Server sent:', msg)
 
-                        game.drop_piece(the_row, col, turn + 1)
-                        if game.is_winner(1):  # if the game is over
-                            print(game.print_board(game.board))
-                            print('Player 1 has won the game!')
-                            game.score[0] += 1
-                            msg = 'P0_WON'
-                            for client in game_id_to_players[gameId]:
-                                client.sendall(msg.encode('utf-8'))  # send to both clients
-                            print('Server sent:', msg)
-                            # TODO
+                    else:  # game is not over yet
+                        # p += 1
+                        # p = p % 2  # 0 if turn is even, else 1
+                        not_p = int(not p)
+                        msg = str(not_p) + '_move'  # ask other player for move
+                        for client in game_id_to_players[gameId]:
+                            client.send(str.encode(msg))
+                        print('Server sent:', msg)
+                # else:
+                  # conn.sendall(pickle.dumps(game))
 
-                        elif game.is_winner(2):
-                            print(game.print_board(game.board))
-                            print('Player 2 has won the game!')
-                            game.score[1] += 1
-                            msg = 'P1_WON'
-                            for client in game_id_to_players[gameId]:
-                                client.sendall(msg.encode('utf-8'))  # send to both clients
-                            print('Server sent:', msg)
-
-                        else:  # game is not over yet
-                            # p += 1
-                            # p = p % 2  # 0 if turn is even, else 1
-                            not_p = int(not p)
-                            msg = str(not_p) + '_move'  # ask other player for move
-                            for client in game_id_to_players[gameId]:
-                                client.sendall(str.encode(msg))
-                            print('Server sent:', msg)
-                    # else:
-                       # conn.sendall(pickle.dumps(game))
-
-            else:
-                break
-        except:
+        else:
+            for client in game_id_to_players[gameId]:
+                print(client)
             break
+        # except:
+          # break
 
     print("Lost connection")
+    # send msg to player in game that their opponent has left
     if gameId in private_game_ids:
         private_game_ids.remove(gameId)
     try:
@@ -146,9 +172,14 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
         print("Closing Game", gameId)
     except:
         pass
-    if game_type == 'public':
-        publicIdCount -= 1  # only if game was public
+   # if game_type == 'public':
+      #  publicIdCount -= 1  # only if game was public
     conn.close()
+    game_id_to_players[gameId].remove(conn)
+    other_player = game_id_to_players[gameId][0]
+    other_player.send(str.encode('opponent_left'))
+    print('Server sent:', 'opponent_left')
+    # del game_id_to_players[gameId]
 
 
 while True:
