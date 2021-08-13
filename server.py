@@ -11,7 +11,7 @@ server = ""
 port = 5555
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-clients = []
+clients = set()
 
 try:
     s.bind((server, port))
@@ -21,12 +21,13 @@ except socket.error as e:
 s.listen(2)
 print("Waiting for a connection, Server Started")
 
-connected = set()
+# connected = set()
 games = dict()  # used for public and private games
 game_id_to_players = dict()  # used for public and private games
 private_game_ids = set()  # set of ints
 publicIdCount = 0
 privateIdCount = 1000
+numPeopleOnline = 0
 
 """
 class Server:
@@ -92,20 +93,23 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                     for client in the_clients:
                         game_id_to_players[gameId].append(client)
                     game = games[gameId]
-                    conn.sendall(pickle.dumps(game))  # send rematch game to both players
+                    conn.sendall(pickle.dumps(game))  # send rematch game
                 elif 'ready' in data2:
                     if data2[1] == '0':
                         game.p0_ready = True
                     else:
                         game.p1_ready = True
                     game.ready = game.p0_ready and game.p1_ready
-                elif 'left' in data2:  # a user is no longer searching for opponent
+                elif data2[2:] == 'left' and data2[1] in ['0', '1']:  # a user is no longer searching for opponent
                     the_player = int(data2[1])
                     if the_player == 0:
                         game.p0_ready = False
                     else:
                         game.p1_ready = False
                     game.ready = game.p0_ready and game.p1_ready
+                    if gameId in private_game_ids:
+                        private_game_ids.remove(gameId)
+                        game_id_to_players[gameId] = []
                 elif data2 == 'get':
                     print('using pickle')
                     # size = len(pickle.dumps(game, -1))
@@ -134,7 +138,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         for client in game_id_to_players[gameId]:
                             client.sendall(msg.encode('utf-8'))  # send to both clients
                         print('Server sent:', msg)
-                        # TODO
+
 
                     elif game.is_winner(2):
                         print(game.print_board(game.board))
@@ -148,11 +152,16 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                     else:  # game is not over yet
                         # p += 1
                         # p = p % 2  # 0 if turn is even, else 1
+                        print(p, type(p))
                         not_p = int(not p)
                         msg = str(not_p) + '_move'  # ask other player for move
                         for client in game_id_to_players[gameId]:
                             client.send(str.encode(msg))
                         print('Server sent:', msg)
+
+                elif data2 == 'someone_leaving':
+                    clients.remove(conn)
+                    conn.close()
                 # else:
                   # conn.sendall(pickle.dumps(game))
 
@@ -175,6 +184,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
    # if game_type == 'public':
       #  publicIdCount -= 1  # only if game was public
     conn.close()
+    clients.remove(conn)
     game_id_to_players[gameId].remove(conn)
     other_player = game_id_to_players[gameId][0]
     other_player.send(str.encode('opponent_left'))
@@ -185,11 +195,15 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
 while True:
     # pygame.display.quit()
     conn, addr = s.accept()
-    clients.append(conn)
+    clients.add(conn)
     print('Clients:', clients)
+    # for client in clients:
+      #  print(client._closed)
+       # client.send(str.encode('abc'))
     print("Connected to:", addr)
     data = conn.recv(1024).decode('utf-8')
     print('Server received2: ', data)
+
     if data == 'public':
         publicIdCount += 1
         p = 0
@@ -236,13 +250,31 @@ while True:
 
         start_new_thread(threaded_client, (conn, p, privateGameId, 'private'))
     elif 'P2_joined_' in data:  # p2 joined private game
-        this_game_id = int(data[10:])
-        p = 1
-        if this_game_id in private_game_ids:
-            print('p2 joined private game')
-            games[this_game_id].p1_ready = True
-            game_id_to_players[this_game_id].append(conn)
-            conn.send(str.encode('joined_game_successfully'))
-            start_new_thread(threaded_client, (conn, p, this_game_id, 'private'))
-        else:
+        try:
+            this_game_id = int(data[10:])
+            p = 1
+            if this_game_id in private_game_ids:
+                print('p2 joined private game')
+                games[this_game_id].p1_ready = True
+                game_id_to_players[this_game_id].append(conn)
+                conn.send(str.encode('joined_game_successfully'))
+                start_new_thread(threaded_client, (conn, p, this_game_id, 'private'))
+            else:
+                conn.send(str.encode('joined_game_failed'))
+        except ValueError:
             conn.send(str.encode('joined_game_failed'))
+
+    elif data == 'get_num_people_online':
+        conn.send(str.encode(str(numPeopleOnline)))
+        print('Server sent: ', numPeopleOnline)
+
+    elif data == 'someone_leaving':
+        numPeopleOnline -= 2  # -=2 because a new connection was created to close the old one
+        clients.remove(conn)
+        conn.close()
+    elif data == 'someone_joined':
+        numPeopleOnline += 1  #
+    elif data == 'someone_joinedget_num_people_online':
+        numPeopleOnline += 1
+        conn.send(str.encode(str(numPeopleOnline)))
+        print('Server sent: ', numPeopleOnline)
