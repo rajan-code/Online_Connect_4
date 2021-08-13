@@ -242,7 +242,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
     screen.fill(BLACK)
     draw_board()
     bug = False
-    requested_rematch, opponent_requested_rematch = False, False
+    requested_rematch, opponent_requested_rematch, rejected_rematch = False, False, False
     game.score = list(prev_score)
 
     screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
@@ -472,28 +472,49 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                # n.client.send(str.encode(game_type))
                                # n.p = n.connect()
                                 main(game_type, game_code, n, True, tuple(game.score), goes_first)
-                    try:
-                        msg = n.client.recv(1024).decode('utf-8')  # check if opponent requested rematch
-                        print('Client received: ', msg)
-                        if msg == 'opponent_requested_rematch':
-                            pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE*2, WIDTH, SQUARE_SIZE*2))
-                            main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                            main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT-SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
-                            screen.blit(main_menu_text, (10, HEIGHT - 75))
-                            opponent_requested_rematch = True
-                            rematch_text2 = SMALL_FONT.render("Your opponent has requested a rematch.", 1, WHITE)
-                            screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE))
-                            accept_rect = pygame.draw.rect(screen, WHITE, (WIDTH - accept_text.get_width() - reject_text.get_width() - 40, HEIGHT - SQUARE_SIZE, accept_text.get_width() + 15, accept_text.get_height() + 5), 1)
-                            reject_rect = pygame.draw.rect(screen, WHITE, (WIDTH - reject_text.get_width() - 20, HEIGHT - SQUARE_SIZE, reject_text.get_width() + 15, reject_text.get_height() + 5), 1)
-                            screen.blit(reject_text, (WIDTH - reject_text.get_width() - 10, HEIGHT - 80))
-                            screen.blit(accept_text, (WIDTH - accept_text.get_width() - reject_text.get_width() - 34, HEIGHT - 80))
 
-                            pygame.display.update()
-                        elif msg == 'rematch_accepted':
-                            n.client.setblocking(True)  # make socket blocking
-                           # n.client.send(str.encode(game_type))
-                           # n.p = n.connect()
-                            main(game_type, game_code, n, True, tuple(game.score), goes_first)
+                            if reject_rect.collidepoint(event.pos) and opponent_requested_rematch:
+                                rejected_rematch = True
+                                n.client.setblocking(True)  # make socket blocking
+                                n.client.send(str.encode('rematch_rejected'))
+                                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE*2, WIDTH, SQUARE_SIZE*2))
+                                rematch_text2 = SMALL_FONT.render("Rematch rejected.", 1, WHITE)
+                                screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 30))
+                                main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+                                main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT-SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                                screen.blit(main_menu_text, (10, HEIGHT - 75))
+                                pygame.display.update()
+                    try:
+                        if not rejected_rematch:
+                            msg = n.client.recv(1024).decode('utf-8')  # check if opponent requested rematch
+                            print('Client received: ', msg)
+                            if msg == 'opponent_requested_rematch':
+                                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE*2, WIDTH, SQUARE_SIZE*2))
+                                main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+                                main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT-SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                                screen.blit(main_menu_text, (10, HEIGHT - 75))
+                                opponent_requested_rematch = True
+                                rematch_text2 = SMALL_FONT.render("Your opponent has requested a rematch.", 1, WHITE)
+                                screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE))
+                                accept_rect = pygame.draw.rect(screen, WHITE, (WIDTH - accept_text.get_width() - reject_text.get_width() - 40, HEIGHT - SQUARE_SIZE, accept_text.get_width() + 15, accept_text.get_height() + 5), 1)
+                                reject_rect = pygame.draw.rect(screen, WHITE, (WIDTH - reject_text.get_width() - 20, HEIGHT - SQUARE_SIZE, reject_text.get_width() + 15, reject_text.get_height() + 5), 1)
+                                screen.blit(reject_text, (WIDTH - reject_text.get_width() - 10, HEIGHT - 80))
+                                screen.blit(accept_text, (WIDTH - accept_text.get_width() - reject_text.get_width() - 34, HEIGHT - 80))
+
+                                pygame.display.update()
+                            elif msg == 'rematch_accepted':
+                                n.client.setblocking(True)  # make socket blocking
+                               # n.client.send(str.encode(game_type))
+                               # n.p = n.connect()
+                                main(game_type, game_code, n, True, tuple(game.score), goes_first)
+
+                            elif msg == 'rematch_rejected':
+                                rejected_rematch = True
+                                n.client.setblocking(True)  # make socket blocking
+                                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE*2, WIDTH, SQUARE_SIZE))
+                                rematch_text2 = SMALL_FONT.render("Rematch rejected.", 1, WHITE)
+                                screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 30))
+                                pygame.display.update()
 
                     except BlockingIOError:
                         pass
