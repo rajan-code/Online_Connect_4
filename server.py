@@ -28,6 +28,8 @@ private_game_ids = set()  # set of ints
 publicIdCount = 0
 privateIdCount = 1000
 numPeopleOnline = 0
+numGamesCompleted = 0
+numPeopleInGame = 0
 
 """
 class Server:
@@ -42,7 +44,7 @@ class Server:
 
 
 def threaded_client(conn, p: int, gameId: int, game_type: str):
-    global publicIdCount
+    global publicIdCount, numGamesCompleted, numPeopleInGame
     if game_type == 'public':
         conn.send(str.encode(str(p)))
         print('Server sent:', str(p))
@@ -60,7 +62,6 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
 
             if gameId in games:
                 game = games[gameId]
-                print('here1')
               #  if not game.is_running:
                   #  game.run()
 
@@ -74,6 +75,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         # game.resetWent()
                         pass
                     elif data2 == 'rematch_accepted':
+                        numPeopleInGame += 2
                         msg = 'rematch_accepted'
                         for client in game_id_to_players[gameId]:
                             if client != conn:
@@ -107,6 +109,8 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         else:
                             game.p1_ready = True
                         game.ready = game.p0_ready and game.p1_ready
+                        if game.ready:
+                            numPeopleInGame += 2
                     elif data2[2:] == 'left' and data2[1] in ['0', '1']:  # a user is no longer searching for opponent
                         the_player = int(data2[1])
                         if the_player == 0:
@@ -118,14 +122,15 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             private_game_ids.remove(gameId)
                             game_id_to_players[gameId] = []
                     elif data2 == 'get':
-                        print('using pickle')
+                        # print('using pickle')
                         # size = len(pickle.dumps(game, -1))
                         # print('size of picked obj:', size)
-                        print(game.id, 'aq')
-                        print(len(pickle.dumps(game, -1)))
+                        # print(game.id, 'aq')
+                        # print(len(pickle.dumps(game, -1)))
                         conn.sendall(pickle.dumps(game))
-                        print('Server sent game.')
-                        print('is game connected', game.connected())
+                        # print('Server sent game.')
+                        if game.connected():
+                            print('Both players are ready.')
                     elif len(data2) == 3 and data2[1] == ':' and (data2[0] in ['0', '1']):  # received player:column
                         turn, col = int(data2[0]), int(data2[2])
                         the_row = game.get_next_open_row(col)
@@ -134,11 +139,13 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             client.send(msg.encode('utf-8'))  # send to both clients
                         # conn.sendall(str.encode(msg))
                         print('Server sent:', msg)
-                        print(game.print_board(game.board))
+                        # print(game.print_board(game.board))
 
                         game.drop_piece(the_row, col, turn + 1)
                         if game.is_winner(1):  # if the game is over
-                            print(game.print_board(game.board))
+                            numPeopleInGame -= 2
+                            numGamesCompleted += 1
+                            # print(game.print_board(game.board))
                             print('Player 1 has won the game!')
                             game.score[0] += 1
                             msg = 'P0_WON'
@@ -147,10 +154,21 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             print('Server sent:', msg)
 
                         elif game.is_winner(2):
+                            numGamesCompleted += 1
+                            numPeopleInGame -= 2
                             print(game.print_board(game.board))
                             print('Player 2 has won the game!')
+                            print(numGamesCompleted)
                             game.score[1] += 1
                             msg = 'P1_WON'
+                            for client in game_id_to_players[gameId]:
+                                client.sendall(msg.encode('utf-8'))  # send to both clients
+                            print('Server sent:', msg)
+                        # TODO what if game is draw
+                        elif game.is_draw():
+                            numGamesCompleted += 1
+                            numPeopleInGame -= 2
+                            msg = 'DRAW'
                             for client in game_id_to_players[gameId]:
                                 client.sendall(msg.encode('utf-8'))  # send to both clients
                             print('Server sent:', msg)
@@ -180,6 +198,21 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
 
     print("Lost connection")
     # send msg to player in game that their opponent has left
+   # if game_type == 'public':
+      #  publicIdCount -= 1  # only if game was public
+    clients.remove(conn)
+    game_id_to_players[gameId].remove(conn)
+    print('b ', game_id_to_players[gameId])
+    conn.close()
+    try:
+        other_player = game_id_to_players[gameId][0]
+        other_player.send(str.encode('opponent_left'))
+        print('Server sent:', 'opponent_left')
+        game = games[gameId]
+        if not(game.is_winner(1) or game.is_winner(2) or game.is_draw()):  # if game was not over and a player left
+            numPeopleInGame -= 2
+    except IndexError:
+        pass
     if gameId in private_game_ids:
         private_game_ids.remove(gameId)
     try:
@@ -187,14 +220,6 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
         print("Closing Game", gameId)
     except KeyError:
         pass
-   # if game_type == 'public':
-      #  publicIdCount -= 1  # only if game was public
-    conn.close()
-    clients.remove(conn)
-    game_id_to_players[gameId].remove(conn)
-    other_player = game_id_to_players[gameId][0]
-    other_player.send(str.encode('opponent_left'))
-    print('Server sent:', 'opponent_left')
     # del game_id_to_players[gameId]
 
 
@@ -274,6 +299,12 @@ while True:
         conn.send(str.encode(str(numPeopleOnline)))
         print('Server sent: ', numPeopleOnline)
 
+    elif data == 'get_num_people_in_game':
+        conn.send(str.encode(str(numPeopleInGame)))
+        print('Server sent: ', numPeopleInGame)
+        clients.remove(conn)
+        conn.close()
+
     elif data == 'someone_leaving':
         numPeopleOnline -= 2  # -=2 because a new connection was created to close the old one
         clients.remove(conn)
@@ -284,3 +315,4 @@ while True:
         numPeopleOnline += 1
         conn.send(str.encode(str(numPeopleOnline)))
         print('Server sent: ', numPeopleOnline)
+
