@@ -223,7 +223,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         for i in range(len(game_id_to_players[gameId])):
                             client = game_id_to_players[gameId][i]
                             if conn != client:
-                                msg = game.usernames[int(not(i))]
+                                msg = game.usernames[i]
                                 conn.send(msg.encode('utf-8'))  # send to both clients
 
                     elif len(data2) == 3 and data2[1] == ':' and (data2[0] in ['0', '1']):  # received player:column

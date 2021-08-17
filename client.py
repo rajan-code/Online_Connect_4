@@ -842,25 +842,19 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                         msg = n.client.recv(1024).decode(
                             'utf-8')  # '0_move' or '1_move'
                         print('Client received3: ', msg)
-            if (len(
-                    msg) == 6 and 'WON' in msg) or msg == 'DRAW':  # game is over
+            if (len(msg) == 6 and 'WON' in msg) or msg == 'DRAW':  # game is over
                 game_winner = int(msg[1])  # 0 or 1
                 game.score[game_winner] += 1
                 print('score ', game.score)
-                pygame.draw.rect(screen, BLACK, (
-                0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
+                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
                 main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                main_menu_rect = pygame.draw.rect(screen, WHITE, (
-                0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
+                main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
                 main_menu_text.get_height() + 5), 1)
                 screen.blit(main_menu_text, (10, HEIGHT - 75))
                 request_rematch_text = FONT2.render("Request rematch", 1, WHITE)
-                request_rematch_rect = pygame.draw.rect(screen, WHITE, (
-                WIDTH - request_rematch_text.get_width() - 20,
-                HEIGHT - SQUARE_SIZE, request_rematch_text.get_width() + 15,
+                request_rematch_rect = pygame.draw.rect(screen, WHITE, (WIDTH - request_rematch_text.get_width() - 20, HEIGHT - SQUARE_SIZE, request_rematch_text.get_width() + 15,
                 request_rematch_text.get_height() + 5), 1)
-                screen.blit(request_rematch_text, (
-                WIDTH - request_rematch_text.get_width() - 10, HEIGHT - 80))
+                screen.blit(request_rematch_text, (WIDTH - request_rematch_text.get_width() - 10, HEIGHT - 80))
 
                 # note that accept_text and rect are not drawn to screen yet
                 if 'WON' in msg:
@@ -875,13 +869,9 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                          player_to_colour[player])
 
                 if player == 0:
-                    score_txt = SMALL_FONT.render(("You " + str(
-                        game.score[0]) + ' - ' + str(
-                        game.score[1]) + " Opponent"), 1, WHITE)
+                    score_txt = SMALL_FONT.render(("You " + str(game.score[0]) + ' - ' + str(game.score[1]) + " " + opponent_username), 1, WHITE)
                 else:
-                    score_txt = SMALL_FONT.render(("You " + str(
-                        game.score[1]) + ' - ' + str(
-                        game.score[0]) + " Opponent"), 1, WHITE)
+                    score_txt = SMALL_FONT.render(("You " + str(game.score[1]) + ' - ' + str(game.score[0]) + " " + opponent_username), 1, WHITE)
                 screen.blit(score_txt, (
                 WIDTH - score_txt.get_width() - 10, HEIGHT - 75 - SQUARE_SIZE))
                 screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
