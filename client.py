@@ -1,4 +1,6 @@
 import concurrent.futures
+import hashlib
+import re
 from _thread import *
 import sys
 import pygame
@@ -7,6 +9,7 @@ from connect_4_game import Game
 import pygame_input
 import pickle
 import threading
+import time
 
 # from network import Network
 
@@ -40,6 +43,7 @@ VERY_SMALL_FONT = pygame.font.SysFont("arial", 24, True)
 
 curr_screen_is_menu_screen = True
 print_lock = threading.Lock()
+
 
 
 class Network:
@@ -90,6 +94,9 @@ class Network:
         except socket.error as e:
             print('socket error')
             return str(e)
+
+
+general_msgs_network = Network('')
 
 
 class PrivateGameNetwork(Network):
@@ -156,36 +163,245 @@ class GetOpponentsMoveThread(threading.Thread):
         get_opponents_move(self.network)
 
 
+def is_valid_email(email: str) -> bool:
+    """
+    Return True iff <email> is a valid email address.
+    >>> a = 'a@gmail.com'
+    >>> is_valid_email(a)
+    True
+    """
+    regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w+$'
+    return bool(re.search(regex, email))
+
+
 def notify_server_and_leave():
-    new_network = Network('')
-    new_network.client.send(str.encode('someone_leaving'))
-    print('Client sent: ', 'someone_leaving')
+    general_msgs_network.client.send(str.encode('GENERAL_someone_leaving'))
+    print('Client sent: ', 'GENERAL_someone_leaving')
     pygame.quit()
     sys.exit(0)
+
+
+def register_user(line: str):
+    """
+    Register the user by sending their information to the server.
+    :param line:<username_email_password>
+    """
+    print('registering user')
+    username, email, password = line.split('_')
+    encoded_pswd = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    new_line = 'GENERAL_NEW_USER:' + username + ',' + email + ',' + encoded_pswd
+    general_msgs_network.client.send(str.encode(new_line))
 
 
 def middle_of_screen(txt: pygame.Surface) -> int:
     return WIDTH // 2 - txt.get_width() // 2
 
 
+def register_screen():
+    screen.fill(BLACK)
+    twenty_chars = SMALL_FONT.render("M"*20, 1, WHITE)
+    title_text = TITLE_FONT.render("Register", 1, (255, 255, 0))
+    screen.blit(title_text, (middle_of_screen(title_text), 25))
+    username_text = SMALL_FONT.render("Username:", 1, WHITE)
+    # len(username) <= 15
+    screen.blit(username_text, (middle_of_screen(username_text), 125))
+    username_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 160, 10 + twenty_chars.get_width(), 27))
+
+    username_text_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20)
+    username_text_input.max_string_length = 15
+    username_text_input.set_cursor_color(WHITE)
+
+    email_text = SMALL_FONT.render("Email:", 1, WHITE)
+    screen.blit(email_text, (middle_of_screen(email_text), 200))
+    email_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 235, 10 + twenty_chars.get_width(), 27))
+
+    email_text_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20)
+    email_text_input.max_string_length = 47
+    email_text_input.set_cursor_color(WHITE)
+
+    password_text = SMALL_FONT.render("Password:", 1, WHITE)
+    screen.blit(password_text, (middle_of_screen(password_text), 275))
+    password_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310, 10 + twenty_chars.get_width(), 27))
+    password_text_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20, password=True)
+    password_text_input.max_string_length = 30
+    # len(password) <= 30
+    password_text_input.set_cursor_color(WHITE)
+
+    clicked_username_box, clicked_email_box, clicked_password_box, clicked_code_box = False, False, False, False
+    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    screen.blit(main_menu_text, (10, HEIGHT - 75))
+
+    register_text = SMALL_FONT.render("Register", 1, WHITE)
+    screen.blit(register_text, (middle_of_screen(register_text), 415))
+    register_rect = pygame.draw.rect(screen, WHITE, (230, 415, register_text.get_width() + 10, register_text.get_height() + 5), 1)
+    pygame.display.update()
+    run = True
+    emailed_code = False
+    errors = ""
+    while run:
+        mouse_pos = pygame.mouse.get_pos()
+        if not emailed_code:
+            if username_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1:
+                clicked_username_box = True
+                clicked_email_box = False
+                clicked_password_box = False
+            elif email_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1:
+                clicked_username_box = False
+                clicked_email_box = True
+                clicked_password_box = False
+            elif password_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1:
+                clicked_username_box = False
+                clicked_email_box = False
+                clicked_password_box = True
+            elif pygame.mouse.get_pressed()[0] == 1:
+                clicked_username_box = False
+                clicked_email_box = False
+                clicked_password_box = False
+
+        curr_events = pygame.event.get()
+        if not emailed_code:
+            if clicked_username_box:
+                username_text_input.update(curr_events)
+            elif clicked_email_box:
+                email_text_input.update(curr_events)
+            elif clicked_password_box:
+                password_text_input.update(curr_events)
+
+        pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 160, 10 + twenty_chars.get_width(), 27))  # username rect
+        screen.blit(username_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2) + 5, 160))
+        pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 235, 10 + twenty_chars.get_width(), 27))  # email rect
+        screen.blit(email_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2) + 5, 235))
+        pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310, 10 + twenty_chars.get_width(), 27))  # password rect
+        screen.blit(password_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2) + 5, 310))
+        pygame.display.update()
+        for event in curr_events:
+            if event.type == pygame.QUIT:
+                run = False
+                notify_server_and_leave()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
+                if main_menu_rect.collidepoint(event.pos):
+                    run = False
+                    menu_screen()
+                if register_rect.collidepoint(event.pos) and not emailed_code:
+                    username = username_text_input.get_text()
+                    email = email_text_input.get_text()
+                    password = password_text_input.get_text()
+                    if len(username) == 0:
+                        errors += 'Username cannot be empty. '
+                    elif not username.isalnum():
+                        errors += 'Username can only contain numbers and letters. '
+                    if len(password) < 4:
+                        errors += 'Password must be at least 4 characters long. '
+                    if not is_valid_email(email):
+                        errors += 'Email is invalid. '
+                    if errors != '':
+                        error_txt = VERY_SMALL_FONT.render(errors, 1, RED)
+                        pygame.draw.rect(screen, BLACK, (0, 350, WIDTH, 60))
+                        # screen.blit(error_txt, (middle_of_screen(error_txt), 395))
+                        blit_text(screen, errors, (5, 350), VERY_SMALL_FONT, RED)
+                        errors = ''
+                        pygame.display.update()
+                    else:  # check if username and email are being used by someone else
+                        errors = ''
+                        usernames = general_msgs_network.send('GENERAL_get_all_usernames')  # use pickle
+                        print(type(usernames))
+                        print(usernames)
+                        emails = general_msgs_network.send('GENERAL_get_all_emails')
+                        if username in usernames:
+                            errors += 'This username is not available. '
+                        if email_text_input.get_text() in emails:
+                            errors += 'This email is associated with an existing account. '
+                        pygame.draw.rect(screen, BLACK, (0, 350, WIDTH, 60))
+                        blit_text(screen, errors, (5, 350), VERY_SMALL_FONT, RED)
+                        pygame.display.update()
+                        if errors == '':  # all info is good, confirm email
+                            print('here')
+                            emailed_code = True
+                            email_txt2 = VERY_SMALL_FONT.render("A code has been sent to: " + email, 1, WHITE)
+                            code_text_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20)
+                            code_text_input.max_string_length = 6
+                            code_text_input.set_cursor_color(WHITE)
+                            code_text = SMALL_FONT.render("Enter code: ", 1, BLUE)
+                            screen.blit(code_text, (middle_of_screen(email_txt2) + email_txt2.get_width()//2 - code_text.get_width() - 10, 495))
+                            code_rect = pygame.draw.rect(screen, BLUE, (middle_of_screen(email_txt2) + email_txt2.get_width()//2, 505, twenty_chars.get_width()//4, 27))
+                            screen.blit(email_txt2, (middle_of_screen(email_txt2), 465))
+                            pygame.draw.rect(screen, BLACK, (230, 415, register_text.get_width() + 10, register_text.get_height() + 5))
+                            register_text = SMALL_FONT.render("Register", 1, WHITE)
+                            screen.blit(register_text, (middle_of_screen(register_text), 615))
+                            register_rect = pygame.draw.rect(screen, WHITE, (230, 615, register_text.get_width() + 10, register_text.get_height() + 5), 1)
+                            pygame.display.update()
+                            the_code = general_msgs_network.send_and_receive('GENERAL_SEND_CODE_TO_' + email)
+                            print(the_code)
+                            while True:
+                                mouse_pos = pygame.mouse.get_pos()
+                                if code_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1:
+                                    clicked_code_box = True
+                                elif pygame.mouse.get_pressed()[0] == 1:
+                                    clicked_code_box = False
+                                curr_events = pygame.event.get()
+                                if clicked_code_box:
+                                    code_text_input.update(curr_events)
+                                pygame.draw.rect(screen, BLUE, (middle_of_screen(email_txt2) + email_txt2.get_width()//2, 505, twenty_chars.get_width()//4, 27))
+                                screen.blit(code_text_input.get_surface(), (middle_of_screen(email_txt2) + email_txt2.get_width()//2 + 5, 505))
+                                pygame.display.update()
+                                for event in curr_events:
+                                    if event.type == pygame.QUIT:
+                                        notify_server_and_leave()
+
+                                    if event.type == pygame.MOUSEBUTTONDOWN:
+                                        if main_menu_rect.collidepoint(event.pos):
+                                            run = False
+                                            menu_screen()
+                                        if register_rect.collidepoint(event.pos) and the_code == code_text_input.get_text():
+                                            line = username + '_' + email + '_' + password
+                                            register_user(line)
+
+                                # if they enter correct code:
+
+                                # register_user(line)
+                                # general_msgs_network.client.send(str.encode('GENERAL_NEW_USER_'))
+
+
+
+def blit_text(surface, text, pos, font, color=pygame.Color('black')):
+    words = [word.split(' ') for word in text.splitlines()]  # 2D array where each row is a list of words.
+    space = font.size(' ')[0]  # The width of a space.
+    max_width, max_height = surface.get_size()
+    x, y = pos
+    for line in words:
+        for word in line:
+            word_surface = font.render(word, 0, color)
+            word_width, word_height = word_surface.get_size()
+            if x + word_width >= max_width:
+                x = pos[0]  # Reset the x.
+                y += word_height  # Start on new row.
+            surface.blit(word_surface, (x, y))
+            x += word_width + space
+        x = pos[0]  # Reset the x.
+        y += word_height  # Start on new row.
+
+
 def login_screen():
     screen.fill(BLACK)
-    twelve_chars = SMALL_FONT.render("M"*20, 1, WHITE)
+    twenty_chars = SMALL_FONT.render("M"*20, 1, WHITE)
     title_text = TITLE_FONT.render("Login", 1, (255, 255, 0))
     screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 50))
     username_text = SMALL_FONT.render("Username/email:", 1, WHITE)
     screen.blit(username_text, (middle_of_screen(username_text), 175))
 
     username_text_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20)
-    username_text_input.max_string_length = 32
+    username_text_input.max_string_length = 47
     username_text_input.set_cursor_color(WHITE)
-    username_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twelve_chars.get_width() // 2), 210, 10 + twelve_chars.get_width(), 27))
+    username_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 210, 10 + twenty_chars.get_width(), 27))
 
     password_text = SMALL_FONT.render("Password:", 1, WHITE)
     screen.blit(password_text, (middle_of_screen(password_text), 275))
     password_text_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20, password=True)
+    password_text_input.max_string_length = 30
     password_text_input.set_cursor_color(WHITE)
-    password_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twelve_chars.get_width() // 2), 310, 10 + twelve_chars.get_width(), 27))
+    password_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310, 10 + twenty_chars.get_width(), 27))
     clicked_username_box, clicked_password_box = False, False
 
     login_text = SMALL_FONT.render("Login", 1, WHITE)
@@ -218,23 +434,20 @@ def login_screen():
             username_text_input.update(curr_events)
         elif clicked_password_box:
             password_text_input.update(curr_events)
-        pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twelve_chars.get_width() // 2), 210, 10 + twelve_chars.get_width(), 27))  # username rect
-        screen.blit(username_text_input.get_surface(), (WIDTH // 2 - (10 + twelve_chars.get_width() // 2), 210))
-        pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twelve_chars.get_width() // 2), 310, 10 + twelve_chars.get_width(), 27))  # password rect
-        screen.blit(password_text_input.get_surface(), (WIDTH // 2 - (10 + twelve_chars.get_width() // 2), 310))
+        pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 210, 10 + twenty_chars.get_width(), 27))  # username rect
+        screen.blit(username_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 210))
+        pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310, 10 + twenty_chars.get_width(), 27))  # password rect
+        screen.blit(password_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310))
         pygame.display.update()
         for event in curr_events:
             if event.type == pygame.QUIT:
-                notify_server_and_leave()
                 run = False
+                notify_server_and_leave()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if main_menu_rect.collidepoint(event.pos):
                     run = False
                     menu_screen()
 
-
-def register_screen():
-    pass
 
 
 def my_account_screen():
@@ -377,8 +590,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
             if msg in ['0_move', '1_move'] and int(
                     msg[0]) == player:  # this player must move
                 label = font1.render("Your turn", 1, player_to_colour[player])
-                pygame.draw.rect(screen, BLACK, (
-                0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
+                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
                 screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
                 pygame.display.update()
                 # msg = n.client.recv(1024).decode('utf-8')  # '0_move' or '1_move'
@@ -685,45 +897,24 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 pygame.display.update()
                     try:
                         if not rejected_rematch:
-                            msg = n.client.recv(1024).decode(
-                                'utf-8')  # check if opponent requested rematch
+                            msg = n.client.recv(1024).decode('utf-8')  # check if opponent requested rematch
                             print('Client received: ', msg)
                             if msg == 'opponent_requested_rematch':
                                 pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE * 2))
-                                main_menu_text = FONT2.render("Main Menu", 1,
-                                                              WHITE)
-                                main_menu_rect = pygame.draw.rect(screen, WHITE,
-                                                                  (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5),
-                                                                  1)
+                                main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+                                main_menu_rect = pygame.draw.rect(screen, WHITE,(0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                                 screen.blit(main_menu_text, (10, HEIGHT - 75))
                                 opponent_requested_rematch = True
-                                rematch_text2 = SMALL_FONT.render(
-                                    "Your opponent has requested a rematch.", 1,
-                                    WHITE)
-                                screen.blit(rematch_text2, (
-                                WIDTH - rematch_text2.get_width() - 10,
-                                HEIGHT - 80 - SQUARE_SIZE))
-                                accept_rect = pygame.draw.rect(screen, WHITE, (
-                                WIDTH - accept_text.get_width() - reject_text.get_width() - 40,
-                                HEIGHT - SQUARE_SIZE,
-                                accept_text.get_width() + 15,
-                                accept_text.get_height() + 5), 1)
-                                reject_rect = pygame.draw.rect(screen, WHITE, (
-                                WIDTH - reject_text.get_width() - 20,
-                                HEIGHT - SQUARE_SIZE,
-                                reject_text.get_width() + 15,
-                                reject_text.get_height() + 5), 1)
-                                screen.blit(reject_text, (
-                                WIDTH - reject_text.get_width() - 10,
-                                HEIGHT - 80))
-                                screen.blit(accept_text, (
-                                WIDTH - accept_text.get_width() - reject_text.get_width() - 34,
-                                HEIGHT - 80))
+                                rematch_text2 = SMALL_FONT.render("Your opponent has requested a rematch.", 1, WHITE)
+                                screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE))
+                                accept_rect = pygame.draw.rect(screen, WHITE, (WIDTH - accept_text.get_width() - reject_text.get_width() - 40, HEIGHT - SQUARE_SIZE, accept_text.get_width() + 15, accept_text.get_height() + 5), 1)
+                                reject_rect = pygame.draw.rect(screen, WHITE, (WIDTH - reject_text.get_width() - 20, HEIGHT - SQUARE_SIZE, reject_text.get_width() + 15, reject_text.get_height() + 5), 1)
+                                screen.blit(reject_text, (WIDTH - reject_text.get_width() - 10, HEIGHT - 80))
+                                screen.blit(accept_text, (WIDTH - accept_text.get_width() - reject_text.get_width() - 34, HEIGHT - 80))
 
                                 pygame.display.update()
                             elif msg == 'rematch_accepted':
-                                n.client.setblocking(
-                                    True)  # make socket blocking
+                                n.client.setblocking(True)  # make socket blocking
                                 # n.client.send(str.encode(game_type))
                                 # n.p = n.connect()
                                 main(game_type, game_code, n, True,
@@ -733,14 +924,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 rejected_rematch = True
                                 n.client.setblocking(
                                     True)  # make socket blocking
-                                pygame.draw.rect(screen, BLACK, (
-                                0, HEIGHT - SQUARE_SIZE * 2, WIDTH,
-                                SQUARE_SIZE))
+                                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
                                 rematch_text2 = SMALL_FONT.render(
                                     "Rematch rejected.", 1, WHITE)
-                                screen.blit(rematch_text2, (
-                                WIDTH - rematch_text2.get_width() - 10,
-                                HEIGHT - 80 - SQUARE_SIZE + 30))
+                                screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 30))
                                 pygame.display.update()
 
                             elif msg == 'opponent_left':
@@ -752,18 +939,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 request_rematch_text.get_height() + 5))
                                 main_menu_text = FONT2.render("Main Menu", 1,
                                                               WHITE)
-                                main_menu_rect = pygame.draw.rect(screen, WHITE,
-                                                                  (0,
-                                                                   HEIGHT - SQUARE_SIZE,
-                                                                   main_menu_text.get_width() + 15,
-                                                                   main_menu_text.get_height() + 5),
-                                                                  1)
+                                main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                                 screen.blit(main_menu_text, (10, HEIGHT - 75))
-                                opponent_left_text = SMALL_FONT.render(
-                                    'Your opponent has left.', 1, WHITE)
-                                screen.blit(opponent_left_text, (
-                                WIDTH - opponent_left_text.get_width() - 10,
-                                HEIGHT - 80 - SQUARE_SIZE + 40))
+                                opponent_left_text = SMALL_FONT.render('Your opponent has left.', 1, WHITE)
+                                screen.blit(opponent_left_text, (WIDTH - opponent_left_text.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 40))
                                 pygame.display.update()
                                 while run3:
                                     # pygame.time.wait(3000)
@@ -860,16 +1039,14 @@ def setup_private_game():
                 if join_game_rect2.collidepoint(event.pos):
                     n = PrivateGameNetwork(1, 'private')
                     print('Client sent: ', 'P2_joined_' + text_input.get_text())
-                    msg = n.send_and_receive(
-                        'P2_joined_' + text_input.get_text())
+                    msg = n.send_and_receive('P2_joined_' + text_input.get_text())
                     print('Client received: ', msg)
                     if msg == 'joined_game_successfully':
                         main('private', '', n, False)  # here
                     elif msg == 'joined_game_failed':
                         incorrect_code_text = SMALL_FONT.render(
                             "Incorrect code.", 1, RED)
-                        screen.blit(incorrect_code_text, (WIDTH // 2 - incorrect_code_text.get_width() // 2,
-                        475 + join_game_text2.get_height()))
+                        screen.blit(incorrect_code_text, (WIDTH // 2 - incorrect_code_text.get_width() // 2, 475 + join_game_text2.get_height()))
 
                 if host_game_rect.collidepoint(event.pos):
                     n = PrivateGameNetwork(0, 'private')
@@ -880,36 +1057,36 @@ def setup_private_game():
                     run = False
                     main('private', game_code, n, False)  # here
                 print(event.pos)
-        screen.blit(join_game_text2,
-                    (WIDTH // 2 - join_game_text2.get_width() // 2, 475))
-        screen.blit(host_game_text,
-                    (WIDTH // 2 - host_game_text.get_width() // 2, 275))
+        screen.blit(join_game_text2, (WIDTH // 2 - join_game_text2.get_width() // 2, 475))
+        screen.blit(host_game_text, (WIDTH // 2 - host_game_text.get_width() // 2, 275))
         pygame.display.update()
 
 
-def refresh() -> int:
+def refresh():
     """
-    Refresh and return number of people currently in a game every 5 seconds.
+    Refresh and return the number of players online and the number of players
+    currently in a game.
     """
-    global curr_screen_is_menu_screen
-    t1 = threading.Timer(5.0, refresh)
-    t1.daemon = True  # thread will be killed when the main program exits
-    if curr_screen_is_menu_screen:
-        t1.start()
-    n = Network('')
-    num_people_in_game = n.send_and_receive('get_num_people_in_game')
-    return int(num_people_in_game)
+    global curr_screen_is_menu_screen, general_msgs_network
+    # t1 = threading.Timer(5.0, refresh)
+    # t1.daemon = True  # thread will be killed when the main program exits
+    # if curr_screen_is_menu_screen:
+    #    t1.start()
+    num_people_online = general_msgs_network.send_and_receive('GENERAL_get_num_people_online')
+    num_people_in_game = general_msgs_network.send_and_receive('GENERAL_get_num_people_in_game')
+    return int(num_people_online), int(num_people_in_game)
 
 
 def menu_screen():
     global curr_screen_is_menu_screen
     screen.fill(BLACK)
     curr_screen_is_menu_screen = True
-    num_people_in_game = refresh()  # refresh number of people in game every 5 seconds
-    num_ppl_in_game_text = VERY_SMALL_FONT.render(
-        'Number of people in a game: ' + str(num_people_in_game), 1, WHITE)
-    screen.blit(num_ppl_in_game_text,
-                (WIDTH - num_ppl_in_game_text.get_width() - 10, HEIGHT - 45))
+    prev_time = int(time.time())
+    num_people_online, num_people_in_game = refresh()  # refresh number of people in game every 5 seconds
+    num_people_online_text = VERY_SMALL_FONT.render('Number of players online: ' + str(num_people_online), 1, WHITE)
+    num_ppl_in_game_text = VERY_SMALL_FONT.render('Number of players in a game: ' + str(num_people_in_game), 1, WHITE)
+    screen.blit(num_people_online_text, (WIDTH - num_people_online_text.get_width() - 10, HEIGHT - 55))
+    screen.blit(num_ppl_in_game_text, (WIDTH - num_ppl_in_game_text.get_width() - 10, HEIGHT - 30))
     pygame.display.update()
     # print(f'There are {num_people_in_game} people in a game right now.')
     # print('client sent: ', 'get_num_people_online')
@@ -943,15 +1120,11 @@ def menu_screen():
                 (WIDTH // 2 - online_text.get_width() // 2, pointer))
 
     public_text = SMALL_FONT.render("Public", 1, WHITE)
-    public_rect = pygame.draw.rect(screen, WHITE, (
-    WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
-    public_text.get_width() + 10, public_text.get_height() + 5), 1)
+    public_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5, public_text.get_width() + 10, public_text.get_height() + 5), 1)
     screen.blit(public_text, (WIDTH // 2 - public_text.get_width() - 35,
                               pointer + online_text.get_height()))
     private_text = SMALL_FONT.render("Private", 1, WHITE)
-    private_rect = pygame.draw.rect(screen, WHITE, (
-    WIDTH // 2 + 30, pointer + 50 - 5, private_text.get_width() + 10,
-    private_text.get_height() + 5), 1)
+    private_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 + 30, pointer + 50 - 5, private_text.get_width() + 10, private_text.get_height() + 5), 1)
     screen.blit(private_text,
                 (WIDTH // 2 + 35, pointer + online_text.get_height()))
 
@@ -960,24 +1133,30 @@ def menu_screen():
     screen.blit(online_text,
                 (WIDTH // 2 - online_text.get_width() // 2, pointer))
     vs_cpu_text = SMALL_FONT.render("Single Player", 1, WHITE)
-    vs_cpu_rect = pygame.draw.rect(screen, WHITE, (
-    WIDTH // 2 - vs_cpu_text.get_width() // 2, pointer + 55 - 5,
-    vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
+    vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, pointer + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
     screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width() // 2 + 5,
                               pointer + vs_cpu_text.get_height() + 13))
     two_player_text = SMALL_FONT.render("Two Players", 1, WHITE)
-    two_player_rect = pygame.draw.rect(screen, WHITE, (
-    WIDTH // 2 - vs_cpu_text.get_width() // 2,
-    pointer + 60 + vs_cpu_text.get_height(), vs_cpu_text.get_width() + 10,
-    vs_cpu_text.get_height() + 5), 1)
-    screen.blit(two_player_text, (
-    WIDTH // 2 - two_player_text.get_width() // 2 + 5,
-    pointer + two_player_text.get_height() + 25 + vs_cpu_text.get_height()))
+    two_player_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, pointer + 60 + vs_cpu_text.get_height(), vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
+    screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width() // 2 + 5, pointer + two_player_text.get_height() + 25 + vs_cpu_text.get_height()))
     pygame.display.update()
     pointer = 185 + 70
 
     while run:
         clock.tick(60)
+        curr_time = int(time.time())
+        if curr_time == prev_time + 5:  # if its been 5 sec
+            prev_time = curr_time
+            num_people_online, num_people_in_game = refresh()  # refresh number of people in game
+            pygame.draw.rect(screen, BLACK, (246, 656, WIDTH-246, HEIGHT-656))
+            num_people_online_text = VERY_SMALL_FONT.render('Number of players online: ' + str(num_people_online), 1, WHITE)
+            num_ppl_in_game_text = VERY_SMALL_FONT.render('Number of players in a game: ' + str(num_people_in_game), 1, WHITE)
+            screen.blit(num_people_online_text, (WIDTH - num_people_online_text.get_width() - 10, HEIGHT - 55))
+            screen.blit(num_ppl_in_game_text, (WIDTH - num_ppl_in_game_text.get_width() - 10, HEIGHT - 30))
+            pygame.display.update()
+
+            print('refreshed', curr_time)
+            # start_time = int(time.time())
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -991,6 +1170,8 @@ def menu_screen():
                     main('public', '', None, False)
                 elif login_rect.collidepoint(event.pos):
                     login_screen()
+                elif register_rect.collidepoint(event.pos):
+                    register_screen()
                 elif private_rect.collidepoint(event.pos):  # private game
                     curr_screen_is_menu_screen = False
                     setup_private_game()
@@ -1002,72 +1183,52 @@ def menu_screen():
                 # draw_board()
                 print(event.pos)
             mouse_pos = pygame.mouse.get_pos()
-            if event.type == pygame.MOUSEMOTION:
-                if public_rect.collidepoint(mouse_pos):  # public game
-                    public_text = SMALL_FONT.render("Public", 1, GREEN)
-                    public_rect = pygame.draw.rect(screen, (0, 255, 0), (
-                    WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
-                    public_text.get_width() + 10, public_text.get_height() + 5),
+            # if event.type == pygame.MOUSEMOTION:
+            if public_rect.collidepoint(mouse_pos):  # public game
+                public_text = SMALL_FONT.render("Public", 1, GREEN)
+                public_rect = pygame.draw.rect(screen, (0, 255, 0), (
+                WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
+                public_text.get_width() + 10, public_text.get_height() + 5),
+                                               1)
+            else:
+                public_text = SMALL_FONT.render("Public", 1, WHITE)
+                public_rect = pygame.draw.rect(screen, WHITE, (
+                WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
+                public_text.get_width() + 10, public_text.get_height() + 5),
+                                               1)
+            if private_rect.collidepoint(mouse_pos):
+                private_text = SMALL_FONT.render("Private", 1, GREEN)
+                private_rect = pygame.draw.rect(screen, GREEN, (WIDTH // 2 + 30, pointer + 50 - 5, private_text.get_width() + 10, private_text.get_height() + 5), 1)
+            else:
+                private_text = SMALL_FONT.render("Private", 1, WHITE)
+                private_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 + 30, pointer + 50 - 5, private_text.get_width() + 10, private_text.get_height() + 5), 1)
+            if two_player_rect.collidepoint(mouse_pos):
+                two_player_text = SMALL_FONT.render("Two Players", 1, GREEN)
+                two_player_rect = pygame.draw.rect(screen, GREEN, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 60 + vs_cpu_text.get_height(), vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5),
                                                    1)
-                else:
-                    public_text = SMALL_FONT.render("Public", 1, WHITE)
-                    public_rect = pygame.draw.rect(screen, WHITE, (
-                    WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
-                    public_text.get_width() + 10, public_text.get_height() + 5),
+            else:
+                two_player_text = SMALL_FONT.render("Two Players", 1, WHITE)
+                two_player_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 60 + vs_cpu_text.get_height(), vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5),
                                                    1)
-                if private_rect.collidepoint(mouse_pos):
-                    private_text = SMALL_FONT.render("Private", 1, GREEN)
-                    private_rect = pygame.draw.rect(screen, GREEN, (
-                    WIDTH // 2 + 30, pointer + 50 - 5,
-                    private_text.get_width() + 10,
-                    private_text.get_height() + 5), 1)
-                else:
-                    private_text = SMALL_FONT.render("Private", 1, WHITE)
-                    private_rect = pygame.draw.rect(screen, WHITE, (
-                    WIDTH // 2 + 30, pointer + 50 - 5,
-                    private_text.get_width() + 10,
-                    private_text.get_height() + 5), 1)
-                if two_player_rect.collidepoint(mouse_pos):
-                    two_player_text = SMALL_FONT.render("Two Players", 1, GREEN)
-                    two_player_rect = pygame.draw.rect(screen, GREEN, (
-                    WIDTH // 2 - vs_cpu_text.get_width() // 2,
-                    375 + 60 + vs_cpu_text.get_height(),
-                    vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5),
-                                                       1)
-                else:
-                    two_player_text = SMALL_FONT.render("Two Players", 1, WHITE)
-                    two_player_rect = pygame.draw.rect(screen, WHITE, (
-                    WIDTH // 2 - vs_cpu_text.get_width() // 2,
-                    375 + 60 + vs_cpu_text.get_height(),
-                    vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5),
-                                                       1)
-                if vs_cpu_rect.collidepoint(mouse_pos):
-                    vs_cpu_text = SMALL_FONT.render("Single Player", 1, GREEN)
-                    vs_cpu_rect = pygame.draw.rect(screen, GREEN, (
-                    WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5,
-                    vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5),
-                                                   1)
-                else:
-                    vs_cpu_text = SMALL_FONT.render("Single Player", 1, WHITE)
-                    vs_cpu_rect = pygame.draw.rect(screen, WHITE, (
-                    WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5,
-                    vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5),
-                                                   1)
+            if vs_cpu_rect.collidepoint(mouse_pos):
+                vs_cpu_text = SMALL_FONT.render("Single Player", 1, GREEN)
+                vs_cpu_rect = pygame.draw.rect(screen, GREEN, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5),
+                                               1)
+            else:
+                vs_cpu_text = SMALL_FONT.render("Single Player", 1, WHITE)
+                vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
 
         screen.blit(public_text, (WIDTH // 2 - public_text.get_width() - 35,
                                   pointer + online_text.get_height()))
         screen.blit(private_text,
                     (WIDTH // 2 + 35, pointer + online_text.get_height()))
-        screen.blit(two_player_text, (
-        WIDTH // 2 - two_player_text.get_width() // 2 + 5,
-        375 + two_player_text.get_height() + 25 + vs_cpu_text.get_height()))
-        screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width() // 2 + 5,
-                                  375 + vs_cpu_text.get_height() + 13))
+        screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width() // 2 + 5, 375 + two_player_text.get_height() + 25 + vs_cpu_text.get_height()))
+        screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width() // 2 + 5, 375 + vs_cpu_text.get_height() + 13))
         pygame.display.update()
 
 
 if __name__ == '__main__':
     # while True:
-    # n = Network('')
-    # n.client.send(str.encode('someone_joined'))
+    general_msgs_network.client.send(str.encode('GENERAL_someone_joined'))
+    time.sleep(0.5)
     menu_screen()

@@ -1,12 +1,26 @@
+import smtplib
 import socket
 import random
+import string
 from _thread import *
 import pickle
 from connect_4_game import Game
 import pygame
+import mysql.connector
+import os
+from datetime import date
+import datetime
+from typing import *
 
 pygame.init()
 
+db = mysql.connector.connect(
+    host='172.105.20.159',
+    user='rajan',
+    passwd=os.environ.get('SQL_PASSWORD'),
+    database='Online_Connect_4'
+)
+mycursor = db.cursor()
 server = ""
 port = 5555
 
@@ -30,6 +44,7 @@ privateIdCount = 1000
 numPeopleOnline = 0
 numGamesCompleted = 0
 numPeopleInGame = 0
+username_to_status = dict()  # keeps track of which users are currently online
 
 """
 class Server:
@@ -41,6 +56,52 @@ class Server:
         for client in self.clients:
             client.send(message)
 """
+
+
+# Database functions
+def get_data(column_name: str) -> List[str]:
+    """
+    :param column_name: "username" or "email"
+    Return the requested data. e.g. if <column_name> == 'username' then return
+    a list of all usernames in the table.
+    """
+    lst = []
+    cmd = 'SELECT ' + column_name + ' FROM Players'
+    mycursor.execute(cmd)
+    for row in mycursor:
+        lst.append(row[0])
+    return lst
+
+
+def add_user_to_database(username, email, pswd) -> None:
+    """
+    Add this new user to the database.
+    """
+    print('adding user')
+    insert = f"INSERT INTO Players (username, email, password, dateCreated) VALUES ('{username}', '{email}', '{pswd}', CURDATE())"
+    mycursor.execute(insert)
+    db.commit()
+
+
+# Server Functions
+def send_email(email: str) -> str:
+    """
+    Send email to <email> and return the 6-char long code
+    """
+    with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.ehlo()
+
+        smtp.login('noreplymessagingapp@gmail.com', os.environ.get('EMAIL_PASSWORD'))
+
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        subject = 'Account Almost Created!'
+        body = 'Please enter the following code in the app to validate your account: ' + code
+
+        msg = f'Subject: {subject}\n\n{body}'
+        smtp.sendmail('noreplymessagingapp@gmail.com', email, msg)
+    return code
 
 
 def threaded_client(conn, p: int, gameId: int, game_type: str):
@@ -164,7 +225,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             for client in game_id_to_players[gameId]:
                                 client.sendall(msg.encode('utf-8'))  # send to both clients
                             print('Server sent:', msg)
-                        # TODO what if game is draw
+
                         elif game.is_draw():
                             numGamesCompleted += 1
                             numPeopleInGame -= 2
@@ -193,7 +254,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                 for client in game_id_to_players[gameId]:
                     print(client)
                 break
-        except ConnectionResetError:
+        except (ConnectionResetError, ConnectionAbortedError, ConnectionError):
             break
 
     print("Lost connection")
@@ -221,6 +282,68 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
     except KeyError:
         pass
     # del game_id_to_players[gameId]
+
+
+def general_connection(conn, curr_data):
+    global numPeopleOnline
+    if curr_data == 'GENERAL_get_num_people_in_game':
+        conn.send(str.encode(str(numPeopleInGame)))
+        print('Server sent: ', numPeopleInGame)
+    elif curr_data == 'GENERAL_someone_joined':
+        numPeopleOnline += 1
+        print('number of ppl online:', numPeopleOnline)
+    elif curr_data == 'GENERAL_someone_leaving':
+        numPeopleOnline -= 1
+        print('number of ppl online:', numPeopleOnline)
+    elif curr_data == 'GENERAL_get_num_people_online':
+        conn.send(str.encode(str(numPeopleOnline)))
+    elif curr_data == 'GENERAL_get_all_usernames':
+        usernames = get_data('username')
+        conn.send(pickle.dumps(usernames))
+    elif curr_data == 'GENERAL_get_all_emails':
+        emails = get_data('email')
+        conn.send(pickle.dumps(emails))
+    elif curr_data[:17] == 'GENERAL_NEW_USER:':
+        username, email, encoded_pswd = curr_data[17:].split(',')
+        add_user_to_database(username, email, encoded_pswd)
+    elif curr_data[:21] == 'GENERAL_SEND_CODE_TO_':  # send code to this email
+        email = curr_data[21:]
+        the_code = send_email(email)
+        conn.send(str.encode(the_code))
+
+    while True:
+        try:
+            data3 = conn.recv(1024 * 4).decode()
+            print('Server received3:', data3)
+            if data3 == 'GENERAL_get_num_people_in_game':
+                conn.send(str.encode(str(numPeopleInGame)))
+                print('Server sent: ', numPeopleInGame)
+            elif data3 == 'GENERAL_someone_joined':
+                numPeopleOnline += 1
+                print('number of ppl online:', numPeopleOnline)
+            elif data3 == 'GENERAL_someone_leaving':
+                numPeopleOnline -= 1
+                print('number of ppl online:', numPeopleOnline)
+                conn.close()
+            elif data3 == 'GENERAL_get_num_people_online':
+                conn.send(str.encode(str(numPeopleOnline)))
+            elif data3 == 'GENERAL_get_all_usernames':
+                usernames = get_data('username')
+                conn.send(pickle.dumps(usernames))
+            elif data3 == 'GENERAL_get_all_emails':
+                emails = get_data('email')
+                conn.send(pickle.dumps(emails))
+            elif data3[:17] == 'GENERAL_NEW_USER:':
+                username, email, encoded_pswd = data3[17:].split(',')
+                add_user_to_database(username, email, encoded_pswd)
+            elif data3[:21] == 'GENERAL_SEND_CODE_TO_':  # send code to this email
+                email = data3[21:]
+                the_code = send_email(email)
+                conn.send(str.encode(the_code))
+
+        except (OSError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
+            break
+    conn.close()
 
 
 while True:
@@ -299,20 +422,25 @@ while True:
         conn.send(str.encode(str(numPeopleOnline)))
         print('Server sent: ', numPeopleOnline)
 
-    elif data == 'get_num_people_in_game':
-        conn.send(str.encode(str(numPeopleInGame)))
-        print('Server sent: ', numPeopleInGame)
-        clients.remove(conn)
-        conn.close()
+    elif data[:8] == 'GENERAL_':
+        start_new_thread(general_connection, (conn, data))
+    """
+    elif data == 'GENERAL_get_num_people_in_game':
+        start_new_thread(general_connection, (conn, data))
+        # conn.send(str.encode(str(numPeopleInGame)))
+        # print('Server sent: ', numPeopleInGame)
+        # clients.remove(conn)
+        # conn.close()
 
-    elif data == 'someone_leaving':
+    elif data == 'GENERAL_someone_leaving':
         numPeopleOnline -= 2  # -=2 because a new connection was created to close the old one
         clients.remove(conn)
         conn.close()
-    elif data == 'someone_joined':
+    elif data == 'GENERAL_someone_joined':
         numPeopleOnline += 1  #
-    elif data == 'someone_joinedget_num_people_online':
+    elif data == 'GENERAL_someone_joinedget_num_people_online':
         numPeopleOnline += 1
         conn.send(str.encode(str(numPeopleOnline)))
         print('Server sent: ', numPeopleOnline)
+    """
 
