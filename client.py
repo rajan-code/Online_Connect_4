@@ -1,7 +1,5 @@
-import concurrent.futures
 import hashlib
 import re
-from _thread import *
 import sys
 import pygame
 import socket
@@ -209,6 +207,7 @@ def register_screen():
     screen.blit(title_text, (middle_of_screen(title_text), 25))
     username_text = SMALL_FONT.render("Username:", 1, WHITE)
     # len(username) <= 15
+    screen.blit(username_text, (middle_of_screen(username_text), 125))
     screen.blit(username_text, (middle_of_screen(username_text), 125))
     username_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 160, 10 + twenty_chars.get_width(), 27))
 
