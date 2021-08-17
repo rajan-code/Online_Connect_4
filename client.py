@@ -481,16 +481,14 @@ def login_screen():
                                 print('logging in...')
                                 correct_info = True
                                 player_username = general_msgs_network.send_and_receive('GENERAL_get_username_given_email:' + email)
-                            else:
-                                errors = 'Login information is invalid.'
 
                     else:  # they are logging in with their username
                         usernames = general_msgs_network.send('GENERAL_get_all_usernames')  # uses pickle
                         if username in usernames:
-                            correct_info = True
                             expected_password = general_msgs_network.send_and_receive('GENERAL_get_password_given_username:' + username)
                             if encoded_pswd == expected_password:  # login successful
                                 player_username = username
+                                correct_info = True
 
                     if correct_info:
                         print('logging in...')
@@ -589,8 +587,8 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
             #   run = False
             #   print("Couldn't get game")
             #   sys.exit()
-
-        opponent_username = n.send_and_receive('get_opponent_username')
+        if game_type == 'public':
+            opponent_username = n.send_and_receive('get_opponent_username')
         screen.fill(BLACK)
         text = SMALL_FONT.render("Found opponent: " + opponent_username, 1, CYAN, True)
         screen.blit(text, (WIDTH // 2 - text.get_width() // 2,
