@@ -47,17 +47,21 @@ player_username = ''   # use this in menu_screen()
 
 
 class Network:
-    def __init__(self, game_type=''):
+    def __init__(self, username='Guest', game_type=''):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # self.server = "172.105.20.159"
-        self.server = 'localhost'
         self.port = 5555
-        self.addr = (self.server, self.port)
         self.game_type = game_type  # "public" or "private"
-        self.client.connect(self.addr)
+        try:
+            self.server = "172.105.20.159"
+            self.addr = (self.server, self.port)
+            self.client.connect(self.addr)
+        except ConnectionRefusedError:
+            self.server = 'localhost'
+            self.addr = (self.server, self.port)
+            self.client.connect(self.addr)
         if game_type == 'public':
             print('Client sent:', game_type)
-            self.client.send(str.encode(game_type))
+            self.client.send(str.encode(username + ':' + game_type))
             self.p = self.client.recv(2048).decode()
 
     # print('network.p value:', self.p)
@@ -518,13 +522,17 @@ def get_opponents_move(n) -> str:  # fix
 
 
 def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_score=(0, 0), prev_went_first=0):
+    global player_username
     run = True
     clock = pygame.time.Clock()
     screen.fill(BLACK)
     player_to_colour = {0: RED, 1: YELLOW}
     if not is_rematch:
         if not the_network:
-            n = Network(game_type)
+            if not player_username:
+                n = Network('Guest', game_type)
+            else:
+                n = Network(player_username, game_type)
         else:
             n = the_network
         # n.client.send(str.encode('public'))
@@ -534,7 +542,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
         # p0 is red and p1 is yellow
         player_to_colour = {0: RED, 1: YELLOW}
         print("You are player", player)
-        msg = 'P' + str(player) + 'ready'
+        if not player_username:
+            msg = 'P' + str(player) + 'ready:Guest'
+        else:
+            msg = 'P' + str(player) + 'ready:' + player_username
         # peek = n.client.recv(1024, socket.MSG_PEEK).decode('utf-8')
         msg = n.send_and_receive(msg)   # '0_move' or '1_move'
         print('Client received: ', msg)
@@ -579,8 +590,9 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
             #   print("Couldn't get game")
             #   sys.exit()
 
+        opponent_username = n.send_and_receive('get_opponent_username')
         screen.fill(BLACK)
-        text = MEDIUM_FONT.render("Found opponent", 1, CYAN, True)
+        text = SMALL_FONT.render("Found opponent: " + opponent_username, 1, CYAN, True)
         screen.blit(text, (WIDTH // 2 - text.get_width() // 2,
                            HEIGHT // 2 - text.get_height() // 2))
         goes_first = 0  # if this is the first game, p0 goes first

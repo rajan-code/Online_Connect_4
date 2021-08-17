@@ -35,6 +35,7 @@ class Game:
         self.score = [0, 0]
         self.board = self.create_board()
         self.is_running = False
+        self.usernames = ['', '']
        # self.draw_board()
 
     def connected(self):
@@ -100,6 +101,9 @@ class Game:
                 if all(self.board[r - i][c + i] == piece for i in range(4)):
                     return True
         return False
+
+    def is_draw(self):
+        return 0. not in self.board
 
     def draw_board(self, win):
         pygame.draw.rect(win, BLACK, (0, 0, WIDTH, SQUARE_SIZE))  # black rect at top of screen

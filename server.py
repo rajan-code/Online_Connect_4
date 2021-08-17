@@ -219,6 +219,13 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         # print('Server sent game.')
                         if game.connected():
                             print('Both players are ready.')
+                    elif data2 == 'get_opponent_username':
+                        for i in range(len(game_id_to_players[gameId])):
+                            client = game_id_to_players[gameId][i]
+                            if conn != client:
+                                msg = game.usernames[int(not(i))]
+                                conn.send(msg.encode('utf-8'))  # send to both clients
+
                     elif len(data2) == 3 and data2[1] == ':' and (data2[0] in ['0', '1']):  # received player:column
                         turn, col = int(data2[0]), int(data2[2])
                         the_row = game.get_next_open_row(col)
@@ -407,11 +414,10 @@ while True:
       #  print(client._closed)
        # client.send(str.encode('abc'))
     print("Connected to:", addr)
-    print('ip address: ', socket.gethostbyname(socket.gethostname()))
     data = conn.recv(1024).decode('utf-8')
     print('Server received2: ', data)
 
-    if data == 'public':
+    if data[-7:] == ':public':
         publicIdCount += 1
         p = 0
         gameId = (publicIdCount - 1)//2
@@ -422,11 +428,13 @@ while True:
             print(games)
             print("Creating a new public game...")
             games[gameId].p0_ready = True
+            games[gameId].usernames[0] = data[:-7]
         else:
             # games[gameId].ready = True
             games[gameId].p1_ready = True
             game_id_to_players[gameId].append(conn)
             p = 1
+            games[gameId].usernames[1] = data[:-7]
         start_new_thread(threaded_client, (conn, p, gameId, 'public'))
 
     elif data == 'private':  # data == 'private'
