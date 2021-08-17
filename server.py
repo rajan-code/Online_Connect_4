@@ -73,6 +73,24 @@ def get_data(column_name: str) -> List[str]:
     return lst
 
 
+def get_password(column_name: str, data: str) -> str:
+    """
+    Return this users password given their username or email.
+    Preconditions:
+        <data> is in the table.
+        <column> == 'username' or 'email'
+
+    >>> str(get_password('username', 'baldski'))
+    '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824'
+    """
+    if column_name == 'username':
+        cmd = f"SELECT password FROM Players WHERE username= + '{data}'"
+    else:
+        cmd = f"SELECT password FROM Players WHERE email= + '{data}'"
+    mycursor.execute(cmd)
+    return mycursor.fetchone()[0]
+
+
 def add_user_to_database(username, email, pswd) -> None:
     """
     Add this new user to the database.
@@ -81,6 +99,15 @@ def add_user_to_database(username, email, pswd) -> None:
     insert = f"INSERT INTO Players (username, email, password, dateCreated) VALUES ('{username}', '{email}', '{pswd}', CURDATE())"
     mycursor.execute(insert)
     db.commit()
+
+
+def get_username(email: str) -> str:
+    """
+    Return this player's username given their email.
+    """
+    cmd = f"SELECT username FROM Players WHERE email= + '{email}'"
+    mycursor.execute(cmd)
+    return mycursor.fetchone()[0]
 
 
 # Server Functions
@@ -303,13 +330,25 @@ def general_connection(conn, curr_data):
     elif curr_data == 'GENERAL_get_all_emails':
         emails = get_data('email')
         conn.send(pickle.dumps(emails))
-    elif curr_data[:17] == 'GENERAL_NEW_USER:':
+    elif curr_data[:17] == 'GENERAL_NEW_USER:':  # someone just registered account
         username, email, encoded_pswd = curr_data[17:].split(',')
         add_user_to_database(username, email, encoded_pswd)
     elif curr_data[:21] == 'GENERAL_SEND_CODE_TO_':  # send code to this email
         email = curr_data[21:]
         the_code = send_email(email)
         conn.send(str.encode(the_code))
+    elif 'GENERAL_get_password_given_email:' in curr_data:  # get password of the user with this email
+        email = curr_data[33:]
+        password = get_password('email', email)
+        conn.send(str.encode(password))
+    elif 'GENERAL_get_username_given_email:' in curr_data:
+        email = curr_data[len('GENERAL_get_username_given_email:'):]
+        username = get_username(email)
+        conn.send(str.encode(username))
+    elif 'GENERAL_get_password_given_username:' in curr_data:
+        username = curr_data[len('GENERAL_get_password_given_username:'):]
+        password = get_password('username', username)
+        conn.send(str.encode(password))
 
     while True:
         try:
@@ -340,6 +379,18 @@ def general_connection(conn, curr_data):
                 email = data3[21:]
                 the_code = send_email(email)
                 conn.send(str.encode(the_code))
+            elif 'GENERAL_get_password_given_email:' in data3:  # get password of the user with this email
+                email = data3[33:]
+                password = get_password('email', email)
+                conn.send(str.encode(password))
+            elif 'GENERAL_get_username_given_email:' in data3:
+                email = data3[len('GENERAL_get_username_given_email:'):]
+                username = get_username(email)
+                conn.send(str.encode(username))
+            elif 'GENERAL_get_password_given_username:' in data3:
+                username = data3[len('GENERAL_get_password_given_username:'):]
+                password = get_password('username', username)
+                conn.send(str.encode(password))
 
         except (OSError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
             break
@@ -351,10 +402,12 @@ while True:
     conn, addr = s.accept()
     clients.add(conn)
     print('Clients:', clients)
+
     # for client in clients:
       #  print(client._closed)
        # client.send(str.encode('abc'))
     print("Connected to:", addr)
+    print('ip address: ', socket.gethostbyname(socket.gethostname()))
     data = conn.recv(1024).decode('utf-8')
     print('Server received2: ', data)
 

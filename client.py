@@ -43,7 +43,7 @@ VERY_SMALL_FONT = pygame.font.SysFont("arial", 24, True)
 
 curr_screen_is_menu_screen = True
 print_lock = threading.Lock()
-
+player_username = ''   # use this in menu_screen()
 
 
 class Network:
@@ -198,6 +198,7 @@ def middle_of_screen(txt: pygame.Surface) -> int:
 
 
 def register_screen():
+    global player_username
     screen.fill(BLACK)
     twenty_chars = SMALL_FONT.render("M"*20, 1, WHITE)
     title_text = TITLE_FONT.render("Register", 1, (255, 255, 0))
@@ -280,7 +281,6 @@ def register_screen():
                 run = False
                 notify_server_and_leave()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                print(event.pos)
                 if main_menu_rect.collidepoint(event.pos):
                     run = False
                     menu_screen()
@@ -357,6 +357,18 @@ def register_screen():
                                         if register_rect.collidepoint(event.pos) and the_code == code_text_input.get_text():
                                             line = username + '_' + email + '_' + password
                                             register_user(line)
+                                            pygame.draw.rect(screen, BLACK, (0, 539, WIDTH, 69))
+                                            player_username = username
+                                            text1 = SMALL_FONT.render("Registration successful!", 1, GREEN)
+                                            screen.blit(text1, (middle_of_screen(text1), 555))
+                                            pygame.display.update()
+                                            pygame.time.delay(500)
+                                            menu_screen()
+                                        elif register_rect.collidepoint(event.pos):  # they enter incorrect code
+                                            pygame.draw.rect(screen, BLACK, (0, 539, WIDTH, 69))
+                                            incorrect_code_text = SMALL_FONT.render("Incorrect code.", 1, RED)
+                                            screen.blit(incorrect_code_text, (middle_of_screen(incorrect_code_text), 555))
+                                            pygame.display.update()
 
                                 # if they enter correct code:
 
@@ -364,11 +376,11 @@ def register_screen():
                                 # general_msgs_network.client.send(str.encode('GENERAL_NEW_USER_'))
 
 
-
 def blit_text(surface, text, pos, font, color=pygame.Color('black')):
     words = [word.split(' ') for word in text.splitlines()]  # 2D array where each row is a list of words.
     space = font.size(' ')[0]  # The width of a space.
     max_width, max_height = surface.get_size()
+    word_height = 0
     x, y = pos
     for line in words:
         for word in line:
@@ -384,6 +396,7 @@ def blit_text(surface, text, pos, font, color=pygame.Color('black')):
 
 
 def login_screen():
+    global player_username
     screen.fill(BLACK)
     twenty_chars = SMALL_FONT.render("M"*20, 1, WHITE)
     title_text = TITLE_FONT.render("Login", 1, (255, 255, 0))
@@ -417,6 +430,7 @@ def login_screen():
 
     pygame.display.update()
     run = True
+    correct_info = False
     while run:
         mouse_pos = pygame.mouse.get_pos()
 
@@ -447,7 +461,47 @@ def login_screen():
                 if main_menu_rect.collidepoint(event.pos):
                     run = False
                     menu_screen()
+                if login_rect.collidepoint(event.pos):
+                    errors = ''
+                    username = username_text_input.get_text()
+                    password = password_text_input.get_text()
+                    encoded_pswd = hashlib.sha256(password.encode('utf-8')).hexdigest()
+                    print(encoded_pswd)
+                    if is_valid_email(username):  # if they are logging in with email
+                        print('email is valid')
+                        email = username
+                        emails = general_msgs_network.send('GENERAL_get_all_emails')  # uses pickle
+                        if email in emails:
+                            expected_password = general_msgs_network.send_and_receive('GENERAL_get_password_given_email:' + email)
+                            if encoded_pswd == expected_password:  # login successful
+                                print('logging in...')
+                                correct_info = True
+                                player_username = general_msgs_network.send_and_receive('GENERAL_get_username_given_email:' + email)
+                            else:
+                                errors = 'Login information is invalid.'
 
+                    else:  # they are logging in with their username
+                        usernames = general_msgs_network.send('GENERAL_get_all_usernames')  # uses pickle
+                        if username in usernames:
+                            correct_info = True
+                            expected_password = general_msgs_network.send_and_receive('GENERAL_get_password_given_username:' + username)
+                            if encoded_pswd == expected_password:  # login successful
+                                player_username = username
+
+                    if correct_info:
+                        print('logging in...')
+                        pygame.draw.rect(screen, BLACK, (0, 548, WIDTH, 54))
+                        text1 = SMALL_FONT.render("Signing in...", 1, GREEN)
+                        screen.blit(text1, (middle_of_screen(text1), 555))
+                        pygame.display.update()
+                        pygame.time.delay(500)
+                        menu_screen()
+                    else:
+                        errors = 'Login information is invalid.'
+                        pygame.draw.rect(screen, BLACK, (0, 548, WIDTH, 54))
+                        text1 = SMALL_FONT.render(errors, 1, RED)
+                        screen.blit(text1, (middle_of_screen(text1), 555))
+                        pygame.display.update()
 
 
 def my_account_screen():
@@ -460,7 +514,6 @@ def get_opponents_move(n) -> str:  # fix
     if not msg:
         print_lock.release()
     else:
-        print('qa ', msg)
         return msg
 
 
@@ -614,7 +667,6 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     pygame.display.update()
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    print(event.pos)
                     x_pos = event.pos[0]
                     column = x_pos // SQUARE_SIZE
                     # check if move is valid TODO
@@ -1056,7 +1108,6 @@ def setup_private_game():
                     print('Client received: game code', game_code)
                     run = False
                     main('private', game_code, n, False)  # here
-                print(event.pos)
         screen.blit(join_game_text2, (WIDTH // 2 - join_game_text2.get_width() // 2, 475))
         screen.blit(host_game_text, (WIDTH // 2 - host_game_text.get_width() // 2, 275))
         pygame.display.update()
@@ -1078,8 +1129,14 @@ def refresh():
 
 
 def menu_screen():
-    global curr_screen_is_menu_screen
+    global curr_screen_is_menu_screen, player_username
     screen.fill(BLACK)
+    if player_username == '':
+        username_text = VERY_SMALL_FONT.render('Playing as Guest', 1, WHITE)
+    else:
+        username_text = VERY_SMALL_FONT.render('Signed in as ' + player_username, 1, GREEN)
+    screen.blit(username_text, (WIDTH - username_text.get_width() - 10, 5))
+
     curr_screen_is_menu_screen = True
     prev_time = int(time.time())
     num_people_online, num_people_in_game = refresh()  # refresh number of people in game every 5 seconds
@@ -1168,34 +1225,27 @@ def menu_screen():
                     print('public game')
                     # run = False
                     main('public', '', None, False)
-                elif login_rect.collidepoint(event.pos):
+                elif login_rect.collidepoint(event.pos) and not player_username:
                     login_screen()
-                elif register_rect.collidepoint(event.pos):
+                elif register_rect.collidepoint(event.pos) and not player_username:  # if they are currently playing as guest
                     register_screen()
                 elif private_rect.collidepoint(event.pos):  # private game
                     curr_screen_is_menu_screen = False
                     setup_private_game()
-                elif two_player_rect.collidepoint(
-                        event.pos):  # human vs human (offline)
+                elif two_player_rect.collidepoint(event.pos):  # human vs human (offline)
                     g = Game(0)
                     g.run(screen)
                     menu_screen()
                 # draw_board()
-                print(event.pos)
             mouse_pos = pygame.mouse.get_pos()
             # if event.type == pygame.MOUSEMOTION:
             if public_rect.collidepoint(mouse_pos):  # public game
                 public_text = SMALL_FONT.render("Public", 1, GREEN)
-                public_rect = pygame.draw.rect(screen, (0, 255, 0), (
-                WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
-                public_text.get_width() + 10, public_text.get_height() + 5),
-                                               1)
+                public_rect = pygame.draw.rect(screen, (0, 255, 0), (WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
+                public_text.get_width() + 10, public_text.get_height() + 5), 1)
             else:
                 public_text = SMALL_FONT.render("Public", 1, WHITE)
-                public_rect = pygame.draw.rect(screen, WHITE, (
-                WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
-                public_text.get_width() + 10, public_text.get_height() + 5),
-                                               1)
+                public_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5, public_text.get_width() + 10, public_text.get_height() + 5), 1)
             if private_rect.collidepoint(mouse_pos):
                 private_text = SMALL_FONT.render("Private", 1, GREEN)
                 private_rect = pygame.draw.rect(screen, GREEN, (WIDTH // 2 + 30, pointer + 50 - 5, private_text.get_width() + 10, private_text.get_height() + 5), 1)
