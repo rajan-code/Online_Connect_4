@@ -550,8 +550,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
             text = SMALL_FONT.render("Finding opponent...", 1, (255, 0, 0),
                                      True)
         else:  # game_type == 'private'
-            text = SMALL_FONT.render(
-                "Waiting for opponent... game code: " + str(game_code), 1,
+            text = SMALL_FONT.render("Waiting for opponent... game code: " + str(game_code), 1,
                 (255, 0, 0), True)
         screen.blit(text, (WIDTH // 2 - text.get_width() // 2,
                            HEIGHT // 2 - text.get_height() // 2))
@@ -586,12 +585,17 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
             #   run = False
             #   print("Couldn't get game")
             #   sys.exit()
+        screen.fill(BLACK)
         if game_type == 'public':
             opponent_username = n.send_and_receive('get_opponent_username')
-        screen.fill(BLACK)
-        text = SMALL_FONT.render("Found opponent: " + opponent_username, 1, CYAN, True)
-        screen.blit(text, (WIDTH // 2 - text.get_width() // 2,
-                           HEIGHT // 2 - text.get_height() // 2))
+            text = SMALL_FONT.render("Found opponent: " + opponent_username, 1, CYAN, True)
+            screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
+        else:
+            text = SMALL_FONT.render("Found opponent", 1, CYAN, True)
+            screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
+        pygame.display.update()
+        # screen.fill(BLACK)
+
         goes_first = 0  # if this is the first game, p0 goes first
 
         if player == 0:
@@ -621,14 +625,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
     # both players have joined the game
     if goes_first == 0:  # red goes first
         goes_first_text = SMALL_FONT.render("Red goes first", 1, RED)
-        screen.blit(goes_first_text, (
-        WIDTH // 2 - goes_first_text.get_width() // 2,
-        HEIGHT // 2 - goes_first_text.get_height() // 2 + text.get_height() + 10))
+        screen.blit(goes_first_text, (middle_of_screen(goes_first_text), HEIGHT // 2 - goes_first_text.get_height() // 2 + text.get_height() + 10))
     else:
         goes_first_text = SMALL_FONT.render("Yellow goes first", 1, YELLOW)
-        screen.blit(goes_first_text, (
-        WIDTH // 2 - goes_first_text.get_width() // 2,
-        HEIGHT // 2 - goes_first_text.get_height() // 2 + text.get_height() + 10))
+        screen.blit(goes_first_text, (middle_of_screen(goes_first_text), HEIGHT // 2 - goes_first_text.get_height() // 2 + text.get_height() + 10))
     pygame.display.update()
     pygame.time.wait(1500)
     screen.fill(BLACK)
@@ -865,6 +865,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     label = font1.render("It's a draw", 1,
                                          player_to_colour[player])
 
+                try:  # if var does not exist
+                    print(opponent_username)
+                except (NameError, UnboundLocalError):
+                    opponent_username = 'Opponent'
                 if player == 0:
                     score_txt = SMALL_FONT.render(("You " + str(game.score[0]) + ' - ' + str(game.score[1]) + " " + opponent_username), 1, WHITE)
                 else:
@@ -876,13 +880,8 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 accept_text = FONT2.render("Accept", 1, WHITE)
                 reject_text = FONT2.render("Reject", 1, WHITE)
                 # note that these are not drawn to screen yet
-                accept_rect = pygame.draw.rect(screen, WHITE, (
-                WIDTH - accept_text.get_width() - reject_text.get_width() - 40,
-                HEIGHT - SQUARE_SIZE, accept_text.get_width() + 15,
-                accept_text.get_height() + 5), 1)
-                reject_rect = pygame.draw.rect(screen, WHITE, (
-                WIDTH - reject_text.get_width() - 20, HEIGHT - SQUARE_SIZE,
-                reject_text.get_width() + 15, reject_text.get_height() + 5), 1)
+                accept_rect = pygame.draw.rect(screen, WHITE, (WIDTH - accept_text.get_width() - reject_text.get_width() - 40, HEIGHT - SQUARE_SIZE, accept_text.get_width() + 15, accept_text.get_height() + 5), 1)
+                reject_rect = pygame.draw.rect(screen, WHITE, (WIDTH - reject_text.get_width() - 20, HEIGHT - SQUARE_SIZE, reject_text.get_width() + 15, reject_text.get_height() + 5), 1)
                 run2 = True
                 n.client.setblocking(False)  # make socket non-blocking
                 while run2:
