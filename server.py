@@ -414,77 +414,80 @@ while True:
       #  print(client._closed)
        # client.send(str.encode('abc'))
     print("Connected to:", addr)
-    data = conn.recv(1024).decode('utf-8')
-    print('Server received2: ', data)
+    try:
+        data = conn.recv(1024).decode('utf-8')
+        print('Server received2: ', data)
 
-    if data[-7:] == ':public':
-        publicIdCount += 1
-        p = 0
-        gameId = (publicIdCount - 1)//2
-        # privateGameId
-        if publicIdCount % 2 == 1:
-            games[gameId] = Game(gameId)
-            game_id_to_players[gameId] = [conn]
-            print(games)
-            print("Creating a new public game...")
-            games[gameId].p0_ready = True
-            games[gameId].usernames[0] = data[:-7]
-        else:
-            # games[gameId].ready = True
-            games[gameId].p1_ready = True
-            game_id_to_players[gameId].append(conn)
-            p = 1
-            games[gameId].usernames[1] = data[:-7]
-        start_new_thread(threaded_client, (conn, p, gameId, 'public'))
+        if data[-7:] == ':public':
+            publicIdCount += 1
+            p = 0
+            gameId = (publicIdCount - 1)//2
+            # privateGameId
+            if publicIdCount % 2 == 1:
+                games[gameId] = Game(gameId)
+                game_id_to_players[gameId] = [conn]
+                print(games)
+                print("Creating a new public game...")
+                games[gameId].p0_ready = True
+                games[gameId].usernames[0] = data[:-7]
+            else:
+                # games[gameId].ready = True
+                games[gameId].p1_ready = True
+                game_id_to_players[gameId].append(conn)
+                p = 1
+                games[gameId].usernames[1] = data[:-7]
+            start_new_thread(threaded_client, (conn, p, gameId, 'public'))
 
-    elif data == 'private':  # data == 'private'
-        privateIdCount += 1
-        p = 0
-        # privateGameId = (privateIdCount - 1) // 2  # generate rand int
-        while True:
-            privateGameId = random.randint(1000, 9999)
-            if privateGameId in private_game_ids:
+        elif data == 'private':  # data == 'private'
+            privateIdCount += 1
+            p = 0
+            # privateGameId = (privateIdCount - 1) // 2  # generate rand int
+            while True:
                 privateGameId = random.randint(1000, 9999)
-            else:
-                break
-        # privateGameId
-        # if privateIdCount % 2 == 1:
-        games[privateGameId] = Game(privateGameId)
-        game_id_to_players[privateGameId] = [conn]
-        private_game_ids.add(privateGameId)
-        print(games)
-        print("Creating a new private game...")
-        print('Server sent: ', 'created_game_' + str(privateGameId))
-        conn.send(str.encode('created_game_' + str(privateGameId)))
-        games[privateGameId].p0_ready = True
-        # else:
-            # games[gameId].ready = True
-          #  games[gameId].p1_ready = True
-          #  game_id_to_players[gameId].append(conn)
-           # p = 1
+                if privateGameId in private_game_ids:
+                    privateGameId = random.randint(1000, 9999)
+                else:
+                    break
+            # privateGameId
+            # if privateIdCount % 2 == 1:
+            games[privateGameId] = Game(privateGameId)
+            game_id_to_players[privateGameId] = [conn]
+            private_game_ids.add(privateGameId)
+            print(games)
+            print("Creating a new private game...")
+            print('Server sent: ', 'created_game_' + str(privateGameId))
+            conn.send(str.encode('created_game_' + str(privateGameId)))
+            games[privateGameId].p0_ready = True
+            # else:
+                # games[gameId].ready = True
+              #  games[gameId].p1_ready = True
+              #  game_id_to_players[gameId].append(conn)
+               # p = 1
 
-        start_new_thread(threaded_client, (conn, p, privateGameId, 'private'))
-    elif 'P2_joined_' in data:  # p2 joined private game
-        try:
-            this_game_id = int(data[10:])
-            p = 1
-            if this_game_id in private_game_ids:
-                print('p2 joined private game')
-                games[this_game_id].p1_ready = True
-                game_id_to_players[this_game_id].append(conn)
-                conn.send(str.encode('joined_game_successfully'))
-                start_new_thread(threaded_client, (conn, p, this_game_id, 'private'))
-            else:
+            start_new_thread(threaded_client, (conn, p, privateGameId, 'private'))
+        elif 'P2_joined_' in data:  # p2 joined private game
+            try:
+                this_game_id = int(data[10:])
+                p = 1
+                if this_game_id in private_game_ids:
+                    print('p2 joined private game')
+                    games[this_game_id].p1_ready = True
+                    game_id_to_players[this_game_id].append(conn)
+                    conn.send(str.encode('joined_game_successfully'))
+                    start_new_thread(threaded_client, (conn, p, this_game_id, 'private'))
+                else:
+                    conn.send(str.encode('joined_game_failed'))
+            except ValueError:
                 conn.send(str.encode('joined_game_failed'))
-        except ValueError:
-            conn.send(str.encode('joined_game_failed'))
 
-    elif data == 'get_num_people_online':
-        conn.send(str.encode(str(numPeopleOnline)))
-        print('Server sent: ', numPeopleOnline)
+        elif data == 'get_num_people_online':
+            conn.send(str.encode(str(numPeopleOnline)))
+            print('Server sent: ', numPeopleOnline)
 
-    elif data[:8] == 'GENERAL_':
-        start_new_thread(general_connection, (conn, data))
+        elif data[:8] == 'GENERAL_':
+            start_new_thread(general_connection, (conn, data))
+    except:
+        pass
     """
     elif data == 'GENERAL_get_num_people_in_game':
         start_new_thread(general_connection, (conn, data))
