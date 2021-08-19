@@ -50,8 +50,7 @@ class Network:
         self.port = 5555
         self.game_type = game_type  # "public" or "private"
         try:
-            # self.server = "172.105.20.159"
-            self.server = 'localhost'
+            self.server = "172.105.20.159"
             self.addr = (self.server, self.port)
             self.client.connect(self.addr)
         except ConnectionRefusedError:
