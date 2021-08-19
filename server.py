@@ -98,6 +98,8 @@ def add_user_to_database(username, email, pswd) -> None:
     print('adding user')
     insert = f"INSERT INTO Players (username, email, password, dateCreated) VALUES ('{username}', '{email}', '{pswd}', CURDATE())"
     mycursor.execute(insert)
+    insert2 = f"INSERT INTO Games (username) VALUES ('{username}')"
+    mycursor.execute(insert2)
     db.commit()
 
 
@@ -105,9 +107,42 @@ def get_username(email: str) -> str:
     """
     Return this player's username given their email.
     """
-    cmd = f"SELECT username FROM Players WHERE email= + '{email}'"
+    cmd = f"SELECT username FROM Players WHERE email='{email}'"
     mycursor.execute(cmd)
     return mycursor.fetchone()[0]
+
+
+def update_games_table(winner: str, loser: str, is_draw=False):
+    """
+    Update the games table.
+    :param winner: The username of the winner of the game.
+    :param loser: The username of the loser of the game.
+    :param is_draw: True iff the game was a draw.
+    """
+    # update games played
+    if winner != 'Guest':
+        cmd1 = f"UPDATE LOW_PRIORITY Games SET gamesPlayed = gamesPlayed + 1 WHERE username='{winner}'"
+        mycursor.execute(cmd1)
+    if loser != 'Guest':
+        cmd1 = f"UPDATE LOW_PRIORITY Games SET gamesPlayed = gamesPlayed + 1 WHERE username='{loser}'"
+        mycursor.execute(cmd1)
+    if not is_draw:
+        # update winner's data
+        if winner != 'Guest':
+            cmd2 = f"UPDATE LOW_PRIORITY Games SET wins = wins + 1 WHERE username='{winner}'"
+            mycursor.execute(cmd2)
+        # update loser's data
+        if loser != 'Guest':
+            cmd3 = f"UPDATE LOW_PRIORITY Games SET losses = losses + 1 WHERE username='{loser}'"
+            mycursor.execute(cmd3)
+    else:
+        if winner != 'Guest':
+            cmd4 = f"UPDATE LOW_PRIORITY Games SET draws = draws + 1 WHERE username='{winner}'"
+            mycursor.execute(cmd4)
+        if loser != 'Guest':
+            cmd4 = f"UPDATE LOW_PRIORITY Games SET draws = draws + 1 WHERE username ='{loser}'"
+            mycursor.execute(cmd4)
+    db.commit()
 
 
 # Server Functions
@@ -237,7 +272,8 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         # print(game.print_board(game.board))
 
                         game.drop_piece(the_row, col, turn + 1)
-                        if game.is_winner(1):  # if the game is over
+                        if game.is_winner(1):  # if player one has won
+                            update_games_table(game.usernames[0], game.usernames[1])
                             numPeopleInGame -= 2
                             numGamesCompleted += 1
                             # print(game.print_board(game.board))
@@ -249,6 +285,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             print('Server sent:', msg)
 
                         elif game.is_winner(2):
+                            update_games_table(game.usernames[1], game.usernames[0])
                             numGamesCompleted += 1
                             numPeopleInGame -= 2
                             print(game.print_board(game.board))
@@ -261,6 +298,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             print('Server sent:', msg)
 
                         elif game.is_draw():
+                            update_games_table(game.usernames[0], game.usernames[1], True)
                             numGamesCompleted += 1
                             numPeopleInGame -= 2
                             msg = 'DRAW'
@@ -438,7 +476,7 @@ while True:
                 games[gameId].usernames[1] = data[:-7]
             start_new_thread(threaded_client, (conn, p, gameId, 'public'))
 
-        elif data == 'private':  # data == 'private'
+        elif data[-8:] == ':private':  # data == '[username]:private'
             privateIdCount += 1
             p = 0
             # privateGameId = (privateIdCount - 1) // 2  # generate rand int
@@ -450,7 +488,9 @@ while True:
                     break
             # privateGameId
             # if privateIdCount % 2 == 1:
+            colon_index = data.index(':')
             games[privateGameId] = Game(privateGameId)
+            games[privateGameId].usernames[0] = data[:colon_index]
             game_id_to_players[privateGameId] = [conn]
             private_game_ids.add(privateGameId)
             print(games)
@@ -465,11 +505,13 @@ while True:
                # p = 1
 
             start_new_thread(threaded_client, (conn, p, privateGameId, 'private'))
-        elif 'P2_joined_' in data:  # p2 joined private game
+        elif ':P2_joined_' in data:  # p2 joined private game
+            colon_index = data.index(':')
             try:
-                this_game_id = int(data[10:])
+                this_game_id = int(data[colon_index+11:])
                 p = 1
                 if this_game_id in private_game_ids:
+                    games[this_game_id].usernames[1] = data[:colon_index]
                     print('p2 joined private game')
                     games[this_game_id].p1_ready = True
                     game_id_to_players[this_game_id].append(conn)

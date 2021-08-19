@@ -50,7 +50,8 @@ class Network:
         self.port = 5555
         self.game_type = game_type  # "public" or "private"
         try:
-            self.server = "172.105.20.159"
+            # self.server = "172.105.20.159"
+            self.server = 'localhost'
             self.addr = (self.server, self.port)
             self.client.connect(self.addr)
         except ConnectionRefusedError:
@@ -104,7 +105,6 @@ general_msgs_network = Network('')
 class PrivateGameNetwork(Network):
     def __init__(self, p: int, game_type=''):
         super().__init__(game_type)
-        print('here')
         # print('Client sent:', game_type)
         # self.client.send(str.encode(game_type))
         self.p = p
@@ -120,11 +120,8 @@ def draw_board():
     for c in range(NUM_COLUMNS):
         for r in range(NUM_ROWS + 1):
             # pygame.draw.rect(screen, BLUE, (c * SQUARE_SIZE, r * SQUARE_SIZE + SQUARE_SIZE, SQUARE_SIZE,SQUARE_SIZE))
-            pygame.draw.circle(screen, BLACK, (
-                c * SQUARE_SIZE + SQUARE_SIZE // 2,
-                r * SQUARE_SIZE + SQUARE_SIZE // 2), RADIUS)
-    pygame.draw.rect(screen, BLACK,
-                     (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
+            pygame.draw.circle(screen, BLACK, (c * SQUARE_SIZE + SQUARE_SIZE // 2, r * SQUARE_SIZE + SQUARE_SIZE // 2), RADIUS)
+    pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
     pygame.display.update()
 
 
@@ -143,16 +140,11 @@ def updateBoard(game, row: int, col: int, player: int) -> None:
                            HEIGHT // 2 - text.get_height() // 2))
     else:
         if player == 1:
-            pygame.draw.circle(screen, RED,
-                               (col * SQUARE_SIZE + SQUARE_SIZE // 2,
-                                (HEIGHT - (
-                                            row + 2) * SQUARE_SIZE + SQUARE_SIZE // 2) - SQUARE_SIZE),
-                               RADIUS)
+            pygame.draw.circle(screen, RED, (col * SQUARE_SIZE + SQUARE_SIZE // 2,
+                                (HEIGHT - (row + 2) * SQUARE_SIZE + SQUARE_SIZE // 2) - SQUARE_SIZE), RADIUS)
         else:
             pygame.draw.circle(screen, YELLOW, (
-                col * SQUARE_SIZE + SQUARE_SIZE // 2, (HEIGHT - (
-                            row + 2) * SQUARE_SIZE + SQUARE_SIZE // 2) - SQUARE_SIZE),
-                               RADIUS)
+                col * SQUARE_SIZE + SQUARE_SIZE // 2, (HEIGHT - (row + 2) * SQUARE_SIZE + SQUARE_SIZE // 2) - SQUARE_SIZE), RADIUS)
     pygame.display.update()
 
 
@@ -1089,7 +1081,10 @@ def setup_private_game():
                 if join_game_rect2.collidepoint(event.pos):
                     n = PrivateGameNetwork(1, 'private')
                     print('Client sent: ', 'P2_joined_' + text_input.get_text())
-                    msg = n.send_and_receive('P2_joined_' + text_input.get_text())
+                    if player_username != '':
+                        msg = n.send_and_receive(player_username + ':P2_joined_' + text_input.get_text())
+                    else:
+                        msg = n.send_and_receive('Guest:P2_joined_' + text_input.get_text())
                     print('Client received: ', msg)
                     if msg == 'joined_game_successfully':
                         main('private', '', n, False)  # here
@@ -1101,7 +1096,10 @@ def setup_private_game():
                 if host_game_rect.collidepoint(event.pos):
                     n = PrivateGameNetwork(0, 'private')
                     print('Client sent:', 'private')
-                    game_code = n.send_and_receive('private')
+                    if player_username != '':
+                        game_code = n.send_and_receive(player_username + ':private')
+                    else:
+                        game_code = n.send_and_receive('Guest:private')
                     game_code = game_code[13:]
                     print('Client received: game code', game_code)
                     run = False
