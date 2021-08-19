@@ -3,6 +3,7 @@ import socket
 import random
 import string
 from _thread import *
+import time
 import pickle
 from connect_4_game import Game
 import pygame
@@ -205,6 +206,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                                 client.sendall(msg.encode('utf-8'))  # send to the other client
                     elif data2 == 'rematch_requested':
                         msg = 'opponent_requested_rematch'
+                        time.sleep(0.1)
                         for client in game_id_to_players[gameId]:
                             if client != conn:
                                 client.sendall(msg.encode('utf-8'))  # send to the other client
@@ -227,6 +229,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         # for client in the_clients:
                             # client.send(str.encode('0_move'))
                     elif 'ready' in data2:
+                        print('AA ', data2)
                         if data2[1] == '0':
                             game.p0_ready = True
                         else:
@@ -267,6 +270,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         msg = data2[0] + ':(' + str(the_row) + ',' + str(col) + ')'  # format: turn:(row,col)
                         for client in game_id_to_players[gameId]:
                             client.send(msg.encode('utf-8'))  # send to both clients
+
                         # conn.sendall(str.encode(msg))
                         print('Server sent:', msg)
                         # print(game.print_board(game.board))
@@ -280,8 +284,9 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             print('Player 1 has won the game!')
                             game.score[0] += 1
                             msg = 'P0_WON'
+                            time.sleep(0.1)
                             for client in game_id_to_players[gameId]:
-                                client.sendall(msg.encode('utf-8'))  # send to both clients
+                                client.send(msg.encode('utf-8'))  # send to both clients
                             print('Server sent:', msg)
 
                         elif game.is_winner(2):
@@ -293,8 +298,9 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             print(numGamesCompleted)
                             game.score[1] += 1
                             msg = 'P1_WON'
+                            time.sleep(0.1)
                             for client in game_id_to_players[gameId]:
-                                client.sendall(msg.encode('utf-8'))  # send to both clients
+                                client.send(msg.encode('utf-8'))  # send to both clients
                             print('Server sent:', msg)
 
                         elif game.is_draw():
@@ -302,8 +308,9 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             numGamesCompleted += 1
                             numPeopleInGame -= 2
                             msg = 'DRAW'
+                            time.sleep(0.1)
                             for client in game_id_to_players[gameId]:
-                                client.sendall(msg.encode('utf-8'))  # send to both clients
+                                client.send(msg.encode('utf-8'))  # send to both clients
                             print('Server sent:', msg)
 
                         else:  # game is not over yet
