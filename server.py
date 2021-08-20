@@ -143,6 +143,7 @@ def update_games_table(winner: str, loser: str, is_draw=False):
         if loser != 'Guest':
             cmd4 = f"UPDATE LOW_PRIORITY Games SET draws = draws + 1 WHERE username ='{loser}'"
             mycursor.execute(cmd4)
+    mycursor.execute("UPDATE LOW_PRIORITY Games SET pointsPercentage=(points/(gamesPlayed*2)) WHERE gamesPlayed>0")
     db.commit()
 
 
