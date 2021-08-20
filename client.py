@@ -602,6 +602,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
         player = int(n.getP())  # 0 or 1
         print('new player ', player)
         game = n.send("get_rematch")
+        opponent_username = game.usernames[int(not player)]
         # msg = '0_move'
         # msg = n.client.recv(1024).decode('utf-8')  # '0_move' or '1_move'
         # print('QHERE ', msg)
