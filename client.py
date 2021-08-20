@@ -8,6 +8,7 @@ import pygame_input
 import pickle
 import threading
 import time
+from typing import *
 
 # from network import Network
 
@@ -23,6 +24,7 @@ BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
 CYAN = (0, 255, 255)
+GRAY = (128, 128, 128)
 
 SQUARE_SIZE = 80
 WIDTH = NUM_COLUMNS * SQUARE_SIZE
@@ -1108,7 +1110,7 @@ def setup_private_game():
         pygame.display.update()
 
 
-def refresh():
+def refresh() -> Tuple[int, int]:
     """
     Refresh and return the number of players online and the number of players
     currently in a game.
@@ -1120,16 +1122,35 @@ def refresh():
     #    t1.start()
     num_people_online = general_msgs_network.send_and_receive('GENERAL_get_num_people_online')
     num_people_in_game = general_msgs_network.send_and_receive('GENERAL_get_num_people_in_game')
-    return int(num_people_online), int(num_people_in_game)
+    return max(0, int(num_people_online)), max(0, int(num_people_in_game))
 
 
 def menu_screen():
     global curr_screen_is_menu_screen, player_username
     screen.fill(BLACK)
-    if player_username == '':
+    if player_username == '':  # if user is not signed in
         username_text = VERY_SMALL_FONT.render('Playing as Guest', 1, WHITE)
+        leaderboard_text = FONT2.render("Leaderboard", 1, GRAY)
+        leaderboard_rect = pygame.draw.rect(screen, GRAY, (5, HEIGHT - SQUARE_SIZE+25, leaderboard_text.get_width() + 15, leaderboard_text.get_height() + 5), 1)
+        my_account_text = FONT2.render("My Account", 1, GRAY)
+        my_account_rect = pygame.draw.rect(screen, GRAY, (5, HEIGHT - SQUARE_SIZE+25-(leaderboard_text.get_height() + 5)-5, my_account_text.get_width() + 15, my_account_text.get_height() + 5), 1)
+        register_text = SMALL_FONT.render("Register", 1, WHITE)
+        login_text = SMALL_FONT.render("Login", 1, WHITE)
+        register_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - register_text.get_width() - 40, 180, register_text.get_width() + 10, register_text.get_height() + 5), 1)
+        login_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 + 30, 180, login_text.get_width() + 10, login_text.get_height() + 5), 1)
     else:
         username_text = VERY_SMALL_FONT.render('Signed in as ' + player_username, 1, GREEN)
+        leaderboard_text = FONT2.render("Leaderboard", 1, WHITE)
+        leaderboard_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE+25, leaderboard_text.get_width() + 15, leaderboard_text.get_height() + 5), 1)
+        my_account_text = FONT2.render("My Account", 1, WHITE)
+        my_account_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE+25-(leaderboard_text.get_height() + 5)-5, my_account_text.get_width() + 15, my_account_text.get_height() + 5), 1)
+        register_text = SMALL_FONT.render("Register", 1, GRAY)
+        login_text = SMALL_FONT.render("Login", 1, GRAY)
+        register_rect = pygame.draw.rect(screen, GRAY, (WIDTH // 2 - register_text.get_width() - 40, 180, register_text.get_width() + 10, register_text.get_height() + 5), 1)
+        login_rect = pygame.draw.rect(screen, GRAY, (WIDTH // 2 + 30, 180, login_text.get_width() + 10, login_text.get_height() + 5), 1)
+
+    screen.blit(my_account_text, (10, HEIGHT - 110))
+    screen.blit(leaderboard_text, (10, HEIGHT - 50))
     screen.blit(username_text, (WIDTH - username_text.get_width() - 10, 5))
 
     curr_screen_is_menu_screen = True
@@ -1156,20 +1177,15 @@ def menu_screen():
     pointer = 185  # starting vertical line
 
     # pygame.draw.line(screen, WHITE, (WIDTH//2, 0), (WIDTH//2, HEIGHT), 1)
-    register_text = SMALL_FONT.render("Register", 1, WHITE)
-    screen.blit(register_text,
-                (WIDTH // 2 - register_text.get_width() - 35, pointer - 5))
-    register_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - register_text.get_width() - 40, pointer - 5, register_text.get_width() + 10, register_text.get_height() + 5), 1)
-    login_text = SMALL_FONT.render("Login", 1, WHITE)
-    login_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 + 30, pointer - 5, login_text.get_width() + 10,
-    login_text.get_height() + 5), 1)
+    # register_text = SMALL_FONT.render("Register", 1, WHITE)
+    screen.blit(register_text, (WIDTH // 2 - register_text.get_width() - 35, pointer - 5))
+    # login_text = SMALL_FONT.render("Login", 1, WHITE)
     screen.blit(login_text, (WIDTH // 2 + 35, pointer - 5))
 
     pointer += 70
 
     online_text = FONT2.render("Online", 1, BLUE)
-    screen.blit(online_text,
-                (WIDTH // 2 - online_text.get_width() // 2, pointer))
+    screen.blit(online_text, (WIDTH // 2 - online_text.get_width() // 2, pointer))
 
     public_text = SMALL_FONT.render("Public", 1, WHITE)
     public_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5, public_text.get_width() + 10, public_text.get_height() + 5), 1)
@@ -1177,8 +1193,7 @@ def menu_screen():
                               pointer + online_text.get_height()))
     private_text = SMALL_FONT.render("Private", 1, WHITE)
     private_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 + 30, pointer + 50 - 5, private_text.get_width() + 10, private_text.get_height() + 5), 1)
-    screen.blit(private_text,
-                (WIDTH // 2 + 35, pointer + online_text.get_height()))
+    screen.blit(private_text, (WIDTH // 2 + 35, pointer + online_text.get_height()))
 
     pointer += 120
     online_text = FONT2.render("Offline", 1, BLUE)
@@ -1215,6 +1230,7 @@ def menu_screen():
                 notify_server_and_leave()
                 # break
             if event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
                 if public_rect.collidepoint(event.pos):  # public game
                     curr_screen_is_menu_screen = False
                     print('public game')
@@ -1231,9 +1247,18 @@ def menu_screen():
                     g = Game(0)
                     g.run(screen)
                     menu_screen()
+                elif my_account_rect.collidepoint(event.pos) and player_username:
+                    my_account_screen()
+                elif leaderboard_rect.collidepoint(event.pos) and player_username:
+                    pass
                 # draw_board()
             mouse_pos = pygame.mouse.get_pos()
             # if event.type == pygame.MOUSEMOTION:
+            if (my_account_rect.collidepoint(mouse_pos) or leaderboard_rect.collidepoint(mouse_pos)) and not player_username:
+                small_txt = VERY_SMALL_FONT.render("You must be signed in to use this feature.", 1, WHITE)
+                screen.blit(small_txt, (10, HEIGHT - 150))
+            else:
+                pygame.draw.rect(screen, BLACK, (0, 569, 405, 30))
             if public_rect.collidepoint(mouse_pos):  # public game
                 public_text = SMALL_FONT.render("Public", 1, GREEN)
                 public_rect = pygame.draw.rect(screen, (0, 255, 0), (WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,

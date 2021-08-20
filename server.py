@@ -218,6 +218,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                                 client.sendall(msg.encode('utf-8'))  # send to the other client
                     elif data2 == 'get_rematch':
                         the_clients = []
+                        the_usernames = games[gameId].usernames
                         for client in game_id_to_players[gameId]:
                             the_clients.append(client)
                         games[gameId] = Game(gameId)
@@ -226,6 +227,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         for client in the_clients:
                             game_id_to_players[gameId].append(client)
                         game = games[gameId]
+                        games[gameId].usernames = the_usernames
                         conn.sendall(pickle.dumps(game))  # send rematch game
                         # for client in the_clients:
                             # client.send(str.encode('0_move'))
@@ -263,7 +265,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             client = game_id_to_players[gameId][i]
                             if conn != client:
                                 msg = game.usernames[i]
-                                conn.send(msg.encode('utf-8'))  # send to both clients
+                                conn.send(msg.encode('utf-8'))  # send to other client
 
                     elif len(data2) == 3 and data2[1] == ':' and (data2[0] in ['0', '1']):  # received player:column
                         turn, col = int(data2[0]), int(data2[2])
@@ -278,6 +280,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
 
                         game.drop_piece(the_row, col, turn + 1)
                         if game.is_winner(1):  # if player one has won
+                            print(game.usernames)
                             update_games_table(game.usernames[0], game.usernames[1])
                             numPeopleInGame -= 2
                             numGamesCompleted += 1
@@ -291,6 +294,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             print('Server sent:', msg)
 
                         elif game.is_winner(2):
+                            print(game.usernames)
                             update_games_table(game.usernames[1], game.usernames[0])
                             numGamesCompleted += 1
                             numPeopleInGame -= 2
