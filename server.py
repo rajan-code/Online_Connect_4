@@ -60,6 +60,14 @@ class Server:
 
 
 # Database functions
+def get_top_ten_public():
+    lst = []
+    mycursor.execute("SELECT * FROM Games ORDER BY pointsPercentage DESC")
+    for row in mycursor:
+        lst.append(row)
+    return lst[:10]
+
+
 def get_data(column_name: str) -> List[str]:
     """
     :param column_name: "username" or "email"
@@ -406,6 +414,9 @@ def general_connection(conn, curr_data):
         username = curr_data[len('GENERAL_get_password_given_username:'):]
         password = get_password('username', username)
         conn.send(str.encode(password))
+    elif curr_data == 'GENERAL_GET_TOP_TEN_PUBLIC':
+        top_ten = get_top_ten_public()
+        conn.send(pickle.dumps(top_ten))
 
     while True:
         try:
@@ -448,6 +459,9 @@ def general_connection(conn, curr_data):
                 username = data3[len('GENERAL_get_password_given_username:'):]
                 password = get_password('username', username)
                 conn.send(str.encode(password))
+            elif data3 == 'GENERAL_GET_TOP_TEN_PUBLIC':
+                top_ten = get_top_ten_public()
+                conn.send(pickle.dumps(top_ten))
 
         except (OSError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
             break
