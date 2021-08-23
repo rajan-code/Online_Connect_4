@@ -380,7 +380,8 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
    # if game_type == 'public':
       #  publicIdCount -= 1  # only if game was public
     clients.remove(conn)
-    game_id_to_players[gameId].remove(conn)
+    if conn in game_id_to_players[gameId]:
+        game_id_to_players[gameId].remove(conn)
     print('b ', game_id_to_players[gameId])
     conn.close()
     try:
