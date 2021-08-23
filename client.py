@@ -1,3 +1,4 @@
+import random
 import hashlib
 import re
 import sys
@@ -40,6 +41,7 @@ MEDIUM_FONT = pygame.font.SysFont("times new roman", 60)
 TITLE_FONT = pygame.font.SysFont("times new roman", 70, True)
 SMALL_FONT = pygame.font.SysFont("arial", 30)
 VERY_SMALL_FONT = pygame.font.SysFont("arial", 24, True)
+VERY_SMALL_FONT2 = pygame.font.SysFont("arial", 20)
 
 curr_screen_is_menu_screen = True
 print_lock = threading.Lock()
@@ -190,6 +192,114 @@ def register_user(line: str):
 
 def middle_of_screen(txt: pygame.Surface) -> int:
     return WIDTH // 2 - txt.get_width() // 2
+
+
+def leaderboard_screen(only_friends=False):
+    global player_username
+    # public
+    screen.fill(BLACK)
+    if not only_friends:  # display public leaderboard
+        public_text = SMALL_FONT.render("Public", 1, GREEN)
+        friends_text = SMALL_FONT.render("Friends", 1, WHITE)
+    else:  # display friends leaderboard
+        public_text = SMALL_FONT.render("Public", 1, WHITE)
+        friends_text = SMALL_FONT.render("Friends", 1, GREEN)
+
+    screen.blit(public_text, (WIDTH//2 - public_text.get_width() - 100, 40))
+    screen.blit(friends_text, (WIDTH//2 + friends_text.get_width(), 40))
+
+    public_rect = pygame.Rect((110, 44), (public_text.get_width(), public_text.get_height()))
+    friends_rect = pygame.Rect((360, 44), (friends_text.get_width(), friends_text.get_height()))
+    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    screen.blit(main_menu_text, (10, HEIGHT - 75))
+    pygame.draw.line(screen, WHITE, (75, int(SQUARE_SIZE)), (75, HEIGHT-SQUARE_SIZE-10), 1)  # ranking
+    pygame.draw.line(screen, WHITE, (225, int(SQUARE_SIZE)), (225, HEIGHT-SQUARE_SIZE-10), 1)  # username
+    pygame.draw.line(screen, WHITE, (275, int(SQUARE_SIZE)), (275, HEIGHT-SQUARE_SIZE-10), 1)  # gp
+    pygame.draw.line(screen, WHITE, (325, int(SQUARE_SIZE)), (325, HEIGHT-SQUARE_SIZE-10), 1)  # w
+    pygame.draw.line(screen, WHITE, (375, int(SQUARE_SIZE)), (375, HEIGHT-SQUARE_SIZE-10), 1)  # d
+    pygame.draw.line(screen, WHITE, (425, int(SQUARE_SIZE)), (425, HEIGHT-SQUARE_SIZE-10), 1)  # l
+    pygame.draw.line(screen, WHITE, (475, int(SQUARE_SIZE)), (475, HEIGHT-SQUARE_SIZE-10), 1)  # pts
+    pygame.draw.line(screen, WHITE, (0, 133), (WIDTH, 133), 1)   # horizontal line
+    text1 = MEDIUM_FONT.render("#", 1, BLUE)
+    screen.blit(text1, (23, 70))
+    text2 = SMALL_FONT.render("Username", 1, BLUE)
+    screen.blit(text2, (90, 80))
+    text2 = SMALL_FONT.render("GP", 1, BLUE)
+    screen.blit(text2, (235, 82))
+    text2 = SMALL_FONT.render("W", 1, BLUE)
+    screen.blit(text2, (290, 82))
+    text2 = SMALL_FONT.render("D", 1, BLUE)
+    screen.blit(text2, (340, 82))
+    text2 = SMALL_FONT.render("L", 1, BLUE)
+    screen.blit(text2, (392, 82))
+    text2 = VERY_SMALL_FONT.render("PTS", 1, BLUE)
+    screen.blit(text2, (430, 87))
+    text2 = SMALL_FONT.render("P%", 1, BLUE)
+    screen.blit(text2, (490, 82))
+
+    pygame.display.update()
+    if not only_friends:
+        top_ten = general_msgs_network.send('GENERAL_GET_TOP_TEN_PUBLIC')  # use pickle
+    else:
+        top_ten = general_msgs_network.send('GENERAL_GET_TOP_TEN_FRIENDS:' + player_username)  # use pickle
+
+    horizontal_line = 135
+    this_player_is_user = False
+    ranking = 1
+    if not only_friends:
+        for i in range(len(top_ten)):  # assign ranking (1, 2, 3...) to each player
+            top_ten[i] = list(top_ten[i])
+            top_ten[i].insert(0, ranking)
+            ranking += 1
+
+    for player in top_ten:
+        print(player)
+        # print this username in yellow
+        ranking, name, gp, wins, draws, losses, points, points_percentage = player
+        ranking_txt = SMALL_FONT.render(str(ranking), 1, WHITE)
+        screen.blit(ranking_txt, (75//2 - ranking_txt.get_width()//2, horizontal_line))
+        if name == player_username:
+            name_txt = VERY_SMALL_FONT2.render(name, 1, YELLOW)
+            this_player_is_user = True
+        else:
+            name_txt = VERY_SMALL_FONT2.render(name, 1, WHITE)
+
+        screen.blit(name_txt, (80, horizontal_line+5))
+        vertical_line = 250
+        for stat in [gp, wins, draws, losses, points]:
+            if this_player_is_user:
+                stat_text = SMALL_FONT.render(str(stat), 1, YELLOW)
+            else:
+                stat_text = SMALL_FONT.render(str(stat), 1, WHITE)
+            screen.blit(stat_text, (vertical_line-stat_text.get_width()//2, horizontal_line))
+            vertical_line += 50
+
+        if this_player_is_user:
+            points_percentage_txt = SMALL_FONT.render(str(points_percentage), 1, YELLOW)
+        else:
+            points_percentage_txt = SMALL_FONT.render(str(points_percentage), 1, WHITE)
+        screen.blit(points_percentage_txt, (480, horizontal_line))
+        horizontal_line += 45
+        if this_player_is_user:
+            this_player_is_user = False
+
+    pygame.display.update()
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
+                if main_menu_rect.collidepoint(event.pos):
+                    run = False
+                    menu_screen()
+                if only_friends and public_rect.collidepoint(event.pos):
+                    leaderboard_screen(only_friends=False)
+                if not only_friends and friends_rect.collidepoint(event.pos):
+                    leaderboard_screen(only_friends=True)
+            if event.type == pygame.QUIT:
+                notify_server_and_leave()
+
 
 
 def register_screen():
@@ -1251,7 +1361,7 @@ def menu_screen():
                 elif my_account_rect.collidepoint(event.pos) and player_username:
                     my_account_screen()
                 elif leaderboard_rect.collidepoint(event.pos) and player_username:
-                    pass
+                    leaderboard_screen()
                 # draw_board()
             mouse_pos = pygame.mouse.get_pos()
             # if event.type == pygame.MOUSEMOTION:

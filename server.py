@@ -68,6 +68,32 @@ def get_top_ten_public():
     return lst[:10]
 
 
+def get_top_ten_friends(username: str):
+    """
+    Return a list of the top 10 players, only including <username> and
+    <username>'s friends.
+    """
+    # see if this function works if username is not in top 10
+    lst = []
+    username_in_top_ten = False
+    counter = 1  # the ranking of each player
+    username_stats = tuple()  # <username>'s stats
+    mycursor.execute(f"SELECT * FROM Games WHERE (username='{username}' OR username in (SELECT friend FROM Friends WHERE username='{username}')) ORDER BY pointsPercentage DESC")
+    for i, row in enumerate(mycursor):
+        if row[0] == username:
+            username_in_top_ten = True
+            username_stats = row
+
+        r = list(row)
+        r.insert(0, counter)
+        lst.append(r)
+        counter += 1
+    if username_in_top_ten:
+        return lst[:10]
+    else:
+        return lst[:10] + username_stats
+
+
 def get_data(column_name: str) -> List[str]:
     """
     :param column_name: "username" or "email"
@@ -417,6 +443,12 @@ def general_connection(conn, curr_data):
     elif curr_data == 'GENERAL_GET_TOP_TEN_PUBLIC':
         top_ten = get_top_ten_public()
         conn.send(pickle.dumps(top_ten))
+    elif 'GENERAL_GET_TOP_TEN_FRIENDS:' in curr_data:
+        colon_index1 = curr_data.index(':')
+        username = curr_data[colon_index1+1:]
+        top_ten = get_top_ten_friends(username)
+        print(top_ten)
+        conn.send(pickle.dumps(top_ten))
 
     while True:
         try:
@@ -461,6 +493,11 @@ def general_connection(conn, curr_data):
                 conn.send(str.encode(password))
             elif data3 == 'GENERAL_GET_TOP_TEN_PUBLIC':
                 top_ten = get_top_ten_public()
+                conn.send(pickle.dumps(top_ten))
+            elif 'GENERAL_GET_TOP_TEN_FRIENDS:' in data3:
+                colon_index1 = data3.index(':')
+                username = data3[colon_index1+1:]
+                top_ten = get_top_ten_friends(username)
                 conn.send(pickle.dumps(top_ten))
 
         except (OSError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
