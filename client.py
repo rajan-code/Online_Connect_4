@@ -14,6 +14,10 @@ from typing import *
 # from network import Network
 
 pygame.init()
+pygame.mixer.init()
+pygame.mixer.music.set_volume(0.5)  # Sets the volume of the music (0-1.0)
+WON_GAME_SOUND = pygame.mixer.Sound('music/won_game.wav')
+CLICK_SOUND = pygame.mixer.Sound('music/click_sound.wav')
 
 NUM_ROWS = 6
 NUM_COLUMNS = 7
@@ -46,6 +50,7 @@ VERY_SMALL_FONT2 = pygame.font.SysFont("arial", 20)
 curr_screen_is_menu_screen = True
 print_lock = threading.Lock()
 player_username = ''   # use this in menu_screen()
+music_on = True
 
 
 class Network:
@@ -449,7 +454,7 @@ def register_screen():
                             register_rect = pygame.draw.rect(screen, WHITE, (230, 615, register_text.get_width() + 10, register_text.get_height() + 5), 1)
                             pygame.display.update()
                             the_code = general_msgs_network.send_and_receive('GENERAL_SEND_CODE_TO_' + email)
-                            print(the_code)
+                            # print(the_code)
                             while True:
                                 mouse_pos = pygame.mouse.get_pos()
                                 if code_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1:
@@ -741,7 +746,7 @@ def get_opponents_move(n) -> str:  # fix
 
 
 def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_score=(0, 0), prev_went_first=0):
-    global player_username
+    global player_username, music_on
     run = True
     clock = pygame.time.Clock()
     screen.fill(BLACK)
@@ -795,8 +800,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     notify_server_and_leave()
-                if event.type == pygame.MOUSEBUTTONDOWN and main_menu_rect.collidepoint(
-                        event.pos):
+                if event.type == pygame.MOUSEBUTTONDOWN and main_menu_rect.collidepoint(event.pos):
                     msg = 'P' + str(player) + 'left'
                     n.client.send(str.encode(msg))
                     print('Client sent:', msg)
@@ -872,8 +876,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 notify_server_and_leave()
-            if msg in ['0_move', '1_move'] and int(
-                    msg[0]) == player:  # this player must move
+            if msg in ['0_move', '1_move'] and int(msg[0]) == player:  # this player must move
                 label = font1.render("Your turn", 1, player_to_colour[player])
                 pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
                 screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
@@ -891,11 +894,9 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     pygame.draw.rect(screen, BLACK, (0, 0, WIDTH, SQUARE_SIZE))
                     x_pos = event.pos[0]
                     if player == 0:
-                        pygame.draw.circle(screen, RED,
-                                           (x_pos, SQUARE_SIZE // 2), RADIUS)
+                        pygame.draw.circle(screen, RED, (x_pos, SQUARE_SIZE // 2), RADIUS)
                     else:
-                        pygame.draw.circle(screen, YELLOW,
-                                           (x_pos, SQUARE_SIZE // 2), RADIUS)
+                        pygame.draw.circle(screen, YELLOW, (x_pos, SQUARE_SIZE // 2), RADIUS)
                     pygame.display.update()
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -903,8 +904,8 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     column = x_pos // SQUARE_SIZE
                     # check if move is valid TODO
                     if game.is_valid_location(column):
-                        pending_move = str(player) + ':' + str(
-                            column)  # e.g. '0:3' player 0 places piece in col 3
+                        pygame.mixer.Sound.play(CLICK_SOUND)
+                        pending_move = str(player) + ':' + str(column)  # e.g. '0:3' player 0 places piece in col 3
                         the_row = game.get_next_open_row(column)
                         print('the row', the_row)
                         game.drop_piece(the_row, column, player + 1)
@@ -1010,8 +1011,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 if msg == 'opponent_left':
                     run3 = True
                     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                    main_menu_rect = pygame.draw.rect(screen, WHITE, (
-                    0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
+                    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
                     main_menu_text.get_height() + 5), 1)
                     screen.blit(main_menu_text, (10, HEIGHT - 75))
                     opponent_left_text = SMALL_FONT.render(
@@ -1040,9 +1040,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     bug = True
                     msg, other_msg = msg[:7], msg[7:]
 
-            if len(msg) == 7 and 0 <= int(msg[0]) <= 1 and 0 <= int(
-                    msg[3]) <= 5 and 0 <= int(
-                    msg[5]) <= 6:  # received player:(row,col)
+            if len(msg) == 7 and 0 <= int(msg[0]) <= 1 and 0 <= int(msg[3]) <= 5 and 0 <= int(msg[5]) <= 6:  # received player:(row,col)
                 player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(
                     msg[5])
                 game.drop_piece(row, col, player_who_just_moved + 1)
@@ -1079,11 +1077,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 # note that accept_text and rect are not drawn to screen yet
                 if 'WON' in msg:
                     if game_winner == player:
-                        label = font1.render("You Won!", 1,
-                                             player_to_colour[player])
+                        label = font1.render("You Won!", 1, player_to_colour[player])
+                        pygame.mixer.Sound.play(WON_GAME_SOUND)
                     else:
-                        label = font1.render("You lost.", 1,
-                                             player_to_colour[player])
+                        label = font1.render("You lost.", 1, player_to_colour[player])
                 else:
                     label = font1.render("It's a draw", 1,
                                          player_to_colour[player])
@@ -1115,8 +1112,9 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                         if event.type == pygame.MOUSEBUTTONDOWN:
                             if main_menu_rect.collidepoint(event.pos):
                                 run2 = False
-                                n.client.setblocking(
-                                    True)  # make socket blocking
+                                rejected_rematch = True
+                                n.client.setblocking(True)  # make socket blocking
+                                n.client.send(str.encode('rematch_rejected'))
                                 menu_screen()
                             if request_rematch_rect.collidepoint(
                                     event.pos) and not (
@@ -1154,11 +1152,9 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 main(game_type, game_code, n, True,
                                      tuple(game.score), goes_first)
 
-                            if reject_rect.collidepoint(
-                                    event.pos) and opponent_requested_rematch:
+                            if reject_rect.collidepoint(event.pos) and opponent_requested_rematch:
                                 rejected_rematch = True
-                                n.client.setblocking(
-                                    True)  # make socket blocking
+                                n.client.setblocking(True)  # make socket blocking
                                 n.client.send(str.encode('rematch_rejected'))
                                 pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE * 2))
                                 rematch_text2 = SMALL_FONT.render("Rematch rejected.", 1, WHITE)

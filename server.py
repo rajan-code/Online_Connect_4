@@ -281,6 +281,11 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         for client in game_id_to_players[gameId]:
                             if client != conn:
                                 client.sendall(msg.encode('utf-8'))  # send to the other client
+                    elif data2 == 'opponent_left':
+                        msg = 'opponent_left'
+                        for client in game_id_to_players[gameId]:
+                            if client != conn:
+                                client.sendall(msg.encode('utf-8'))  # send to the other client
                     elif data2 == 'get_rematch':
                         the_clients = []
                         the_usernames = games[gameId].usernames
@@ -312,9 +317,14 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         else:
                             game.p1_ready = False
                         game.ready = game.p0_ready and game.p1_ready
+                        game_id_to_players[gameId] = []
                         if gameId in private_game_ids:
                             private_game_ids.remove(gameId)
-                            game_id_to_players[gameId] = []
+                        else:
+                            publicIdCount -= 1
+                            print('publicID', publicIdCount)
+                            games[gameId].p0_ready = False
+                            games[gameId].usernames[0] = ''
                     elif data2 == 'get':
                         # print('using pickle')
                         # size = len(pickle.dumps(game, -1))
