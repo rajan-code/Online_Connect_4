@@ -9,7 +9,6 @@ Users can currently:
   
 Installation requirements:  
 pygame  
-playsound  
   
 Instructions:  
 The folders/files you need are music/, client.py, pygame_input.py, and connect_4_game.py.  
