@@ -139,7 +139,7 @@ def add_user_to_database(username, email, pswd) -> None:
     print('adding user')
     insert = f"INSERT INTO Players (username, email, password, dateCreated) VALUES ('{username}', '{email}', '{pswd}', CURDATE())"
     mycursor.execute(insert)
-    insert2 = f"INSERT INTO Games (username) VALUES ('{username}')"
+    insert2 = f"INSERT INTO Games (username, pointsPercentage) VALUES ('{username}', 0.000)"
     mycursor.execute(insert2)
     db.commit()
 

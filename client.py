@@ -613,13 +613,24 @@ def my_account_screen():
     player_username = 'baldski'  # TODO remove
     screen.fill(BLACK)
     username_text = MEDIUM_FONT.render(player_username, 1, CYAN)
-    screen.blit(username_text, (middle_of_screen(username_text), 50))
-    email = general_msgs_network.send_and_receive('GENERAL_get_email_given_username')
+    screen.blit(username_text, (middle_of_screen(username_text), 0))
+    email = general_msgs_network.send_and_receive('GENERAL_get_email_given_username:' + player_username)
     print(email)
-    email_text = SMALL_FONT.render(email, 1, CYAN)
-    screen.blit(email_text, (middle_of_screen(email_text), 150))
+    email_text = SMALL_FONT.render(email, 1, WHITE)
+    screen.blit(email_text, (middle_of_screen(email_text), 60))
+
+    stats_text = SMALL_FONT.render("Stats", 1, WHITE)
+    screen.blit(stats_text, (middle_of_screen(stats_text), 165))
+
+    add_friends_text = SMALL_FONT.render("Add friend", 1, BLUE)
+    screen.blit(add_friends_text, (middle_of_screen(add_friends_text), HEIGHT - 250))
+    info_text = VERY_SMALL_FONT2.render("You need your friends' username and friend code to add them.", 1, WHITE)
+    screen.blit(info_text, (middle_of_screen(info_text), HEIGHT - 220))
 
     # username, date account created, show stats (gp, w, d, l), friends+ current status(online/offline)
+    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE+25, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    screen.blit(main_menu_text, (10, HEIGHT - 50))
     pygame.display.update()
     run = True
     while run:
@@ -628,6 +639,10 @@ def my_account_screen():
                 notify_server_and_leave()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 print(event.pos)
+                if main_menu_rect.collidepoint(event.pos):
+                    run = False
+                    menu_screen()
+
 
 def get_opponents_move(n) -> str:  # fix
     msg = n.client.recv(1024).decode('utf-8')
