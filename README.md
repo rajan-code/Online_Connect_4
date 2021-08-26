@@ -4,11 +4,13 @@ Users can currently:
   - play random opponent online (public game)  
   - play friend online (private game)  
   - play their friend offline  
-  - view the public leaderboard  
+  - view the public leaderboard and the friends leaderboard  
+  - add friends  
   
 Installation requirements:  
 pygame  
+playsound  
   
 Instructions:  
-The files you need are client.py, pygame_input.py, and connect_4_game.py.  
+The folders/files you need are music/, client.py, pygame_input.py, and connect_4_game.py.  
 Run client.py  
