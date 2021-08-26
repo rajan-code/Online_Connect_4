@@ -609,9 +609,25 @@ def login_screen():
 
 
 def my_account_screen():
-    pass
-    # username, date account created, show stats (gp, w, d, l), friends+ current status(online/offline)
+    global player_username
+    player_username = 'baldski'  # TODO remove
+    screen.fill(BLACK)
+    username_text = MEDIUM_FONT.render(player_username, 1, CYAN)
+    screen.blit(username_text, (middle_of_screen(username_text), 50))
+    email = general_msgs_network.send_and_receive('GENERAL_get_email_given_username')
+    print(email)
+    email_text = SMALL_FONT.render(email, 1, CYAN)
+    screen.blit(email_text, (middle_of_screen(email_text), 150))
 
+    # username, date account created, show stats (gp, w, d, l), friends+ current status(online/offline)
+    pygame.display.update()
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                notify_server_and_leave()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
 
 def get_opponents_move(n) -> str:  # fix
     msg = n.client.recv(1024).decode('utf-8')
@@ -1358,7 +1374,7 @@ def menu_screen():
                     g = Game(0)
                     g.run(screen)
                     menu_screen()
-                elif my_account_rect.collidepoint(event.pos) and player_username:
+                elif my_account_rect.collidepoint(event.pos):  # remember to add 'and player_username'
                     my_account_screen()
                 elif leaderboard_rect.collidepoint(event.pos) and player_username:
                     leaderboard_screen()

@@ -108,6 +108,12 @@ def get_data(column_name: str) -> List[str]:
     return lst
 
 
+def get_email(username: str):
+    cmd = f"SELECT email FROM Players WHERE username='{username}'"
+    mycursor.execute(cmd)
+    return mycursor.fetchone()[0]
+
+
 def get_password(column_name: str, data: str) -> str:
     """
     Return this users password given their username or email.
@@ -450,6 +456,10 @@ def general_connection(conn, curr_data):
         top_ten = get_top_ten_friends(username)
         print(top_ten)
         conn.send(pickle.dumps(top_ten))
+    elif 'GENERAL_get_email_given_username:' in curr_data:
+        username = curr_data[len('GENERAL_get_email_given_username:'):]
+        email = get_email(username)
+        conn.send(str.encode(email))
 
     while True:
         try:
@@ -500,6 +510,10 @@ def general_connection(conn, curr_data):
                 username = data3[colon_index1+1:]
                 top_ten = get_top_ten_friends(username)
                 conn.send(pickle.dumps(top_ten))
+            elif 'GENERAL_get_email_given_username:' in data3:
+                username = data3[len('GENERAL_get_email_given_username:'):]
+                email = get_email(username)
+                conn.send(str.encode(email))
 
         except (OSError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
             break
