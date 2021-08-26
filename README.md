@@ -4,6 +4,7 @@ Users can currently:
   - play random opponent online (public game)  
   - play friend online (private game)  
   - play their friend offline  
+  - view the public leaderboard  
   
 Installation requirements:  
 pygame  
