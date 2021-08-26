@@ -108,6 +108,14 @@ def get_data(column_name: str) -> List[str]:
     return lst
 
 
+def get_friends(username: str) -> List[str]:
+    lst = []
+    cmd = f"SELECT friend FROM Friends WHERE username='{username}'"
+    mycursor.execute(cmd)
+    for x in mycursor:
+        lst.append(x[0])
+    return lst
+
 def get_email(username: str):
     cmd = f"SELECT email FROM Players WHERE username='{username}'"
     mycursor.execute(cmd)
@@ -141,8 +149,20 @@ def add_user_to_database(username, email, pswd) -> None:
     mycursor.execute(insert)
     insert2 = f"INSERT INTO Games (username, pointsPercentage) VALUES ('{username}', 0.000)"
     mycursor.execute(insert2)
+    mycursor.execute(f"UPDATE Players SET friendCode = FLOOR(RAND()*(99999-10000)+10000) WHERE username='{username}'")
     db.commit()
 
+
+def add_friend(username, friend) -> None:
+    """
+    Make these two users friends in the database.
+
+    """
+    insert = f"INSERT IGNORE INTO Friends (username, friend) VALUES ('{username}', '{friend}')"
+    mycursor.execute(insert)
+    insert = f"INSERT IGNORE INTO Friends (username, friend) VALUES ('{friend}', '{username}')"
+    mycursor.execute(insert)
+    db.commit()
 
 def get_username(email: str) -> str:
     """
@@ -152,6 +172,10 @@ def get_username(email: str) -> str:
     mycursor.execute(cmd)
     return mycursor.fetchone()[0]
 
+def get_friend_code(username: str) -> str:
+    cmd = f"SELECT friendCode FROM Players WHERE username='{username}'"
+    mycursor.execute(cmd)
+    return str(mycursor.fetchone()[0])
 
 def update_games_table(winner: str, loser: str, is_draw=False):
     """
@@ -200,6 +224,7 @@ def send_email(email: str) -> str:
         smtp.login('noreplymessagingapp@gmail.com', os.environ.get('EMAIL_PASSWORD'))
 
         code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        print(code)
         subject = 'Account Almost Created!'
         body = 'Please enter the following code in the app to validate your account: ' + code
 
@@ -431,6 +456,9 @@ def general_connection(conn, curr_data):
     elif curr_data[:17] == 'GENERAL_NEW_USER:':  # someone just registered account
         username, email, encoded_pswd = curr_data[17:].split(',')
         add_user_to_database(username, email, encoded_pswd)
+    elif 'GENERAL_ADD_FRIEND:' in curr_data:
+        username, friend = curr_data[19:].split(',')
+        add_friend(username, friend)
     elif curr_data[:21] == 'GENERAL_SEND_CODE_TO_':  # send code to this email
         email = curr_data[21:]
         the_code = send_email(email)
@@ -460,6 +488,14 @@ def general_connection(conn, curr_data):
         username = curr_data[len('GENERAL_get_email_given_username:'):]
         email = get_email(username)
         conn.send(str.encode(email))
+    elif 'GENERAL_get_friend_code:' in curr_data:
+        username = curr_data[len('GENERAL_get_friend_code:'):]
+        friend_code = get_friend_code(username)
+        conn.send(str.encode(friend_code))
+    elif 'GENERAL_get_friends:' in curr_data:
+        username = curr_data[len('GENERAL_get_friends:'):]
+        friends = get_friends(username)
+        conn.send(pickle.dumps(friends))
 
     while True:
         try:
@@ -486,6 +522,9 @@ def general_connection(conn, curr_data):
             elif data3[:17] == 'GENERAL_NEW_USER:':
                 username, email, encoded_pswd = data3[17:].split(',')
                 add_user_to_database(username, email, encoded_pswd)
+            elif 'GENERAL_ADD_FRIEND:' in data3:
+                username, friend = data3[19:].split(',')
+                add_friend(username, friend)
             elif data3[:21] == 'GENERAL_SEND_CODE_TO_':  # send code to this email
                 email = data3[21:]
                 the_code = send_email(email)
@@ -514,6 +553,14 @@ def general_connection(conn, curr_data):
                 username = data3[len('GENERAL_get_email_given_username:'):]
                 email = get_email(username)
                 conn.send(str.encode(email))
+            elif 'GENERAL_get_friend_code:' in data3:
+                username = data3[len('GENERAL_get_friend_code:'):]
+                friend_code = get_friend_code(username)
+                conn.send(str.encode(friend_code))
+            elif 'GENERAL_get_friends:' in data3:
+                username = data3[len('GENERAL_get_friends:'):]
+                friends = get_friends(username)
+                conn.send(pickle.dumps(friends))
 
         except (OSError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
             break

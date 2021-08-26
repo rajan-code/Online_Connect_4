@@ -178,7 +178,17 @@ def notify_server_and_leave():
     sys.exit(0)
 
 
-def register_user(line: str):
+def add_friend(line: str) -> None:
+    """
+    Make these two users friends in the database by sending info to the server.
+    :param line: <username_friendsUsername>
+    """
+    username, friend = line.split('_')
+    new_line = 'GENERAL_ADD_FRIEND:' + username + ',' + friend
+    general_msgs_network.client.send(str.encode(new_line))
+
+
+def register_user(line: str) -> None:
     """
     Register the user by sending their information to the server.
     :param line:<username_email_password>
@@ -572,7 +582,6 @@ def login_screen():
                     username = username_text_input.get_text()
                     password = password_text_input.get_text()
                     encoded_pswd = hashlib.sha256(password.encode('utf-8')).hexdigest()
-                    print(encoded_pswd)
                     if is_valid_email(username):  # if they are logging in with email
                         print('email is valid')
                         email = username
@@ -610,31 +619,75 @@ def login_screen():
 
 def my_account_screen():
     global player_username
-    player_username = 'baldski'  # TODO remove
     screen.fill(BLACK)
     username_text = MEDIUM_FONT.render(player_username, 1, CYAN)
     screen.blit(username_text, (middle_of_screen(username_text), 0))
-    email = general_msgs_network.send_and_receive('GENERAL_get_email_given_username:' + player_username)
-    print(email)
-    email_text = SMALL_FONT.render(email, 1, WHITE)
-    screen.blit(email_text, (middle_of_screen(email_text), 60))
+    # email = general_msgs_network.send_and_receive('GENERAL_get_email_given_username:' + player_username)
+    my_friend_code = general_msgs_network.send_and_receive('GENERAL_get_friend_code:' + player_username)
+    # print(email)
+    # email_text = SMALL_FONT.render(email, 1, WHITE)
+    # screen.blit(email_text, (middle_of_screen(email_text), 60))
+    friend_code_text = SMALL_FONT.render(f"My friend code: {my_friend_code}", 1, BLUE)
+    screen.blit(friend_code_text, (middle_of_screen(friend_code_text), 60))
 
     stats_text = SMALL_FONT.render("Stats", 1, WHITE)
     screen.blit(stats_text, (middle_of_screen(stats_text), 165))
 
-    add_friends_text = SMALL_FONT.render("Add friend", 1, BLUE)
-    screen.blit(add_friends_text, (middle_of_screen(add_friends_text), HEIGHT - 250))
+    add_friends_text = SMALL_FONT.render("Add friend", 1, WHITE)
+    screen.blit(add_friends_text, (middle_of_screen(add_friends_text), HEIGHT - 255))
+    pygame.draw.line(screen, WHITE, (222, 498), (337, 498), 1)
     info_text = VERY_SMALL_FONT2.render("You need your friends' username and friend code to add them.", 1, WHITE)
-    screen.blit(info_text, (middle_of_screen(info_text), HEIGHT - 220))
+    screen.blit(info_text, (middle_of_screen(info_text), HEIGHT - 215))
 
     # username, date account created, show stats (gp, w, d, l), friends+ current status(online/offline)
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
     main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE+25, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 50))
+
+    add_friends_text2 = SMALL_FONT.render("Add friend", 1, BLUE)
+    screen.blit(add_friends_text2, (middle_of_screen(add_friends_text2), HEIGHT - 115))
+    add_friend_rect = pygame.draw.rect(screen, BLUE, (220, 605, add_friends_text2.get_width()+5, add_friends_text2.get_height()), 1)
+
+    fifteen_chars = VERY_SMALL_FONT.render("M"*15, 1, BLUE)
+    username_text = SMALL_FONT.render("Their username: ", 1, BLUE)
+    username_rect = pygame.draw.rect(screen, BLUE, (middle_of_screen(username_text) - 140 + username_text.get_width(), 535, fifteen_chars.get_width()+5, 27))
+    screen.blit(username_text, (WIDTH // 2 - username_text.get_width() // 2 - 140, 525))
+    username_text_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20)
+    username_text_input.max_string_length = 15
+
+    friend_code_text = SMALL_FONT.render("Their friend code: ", 1, BLUE)
+    friend_code_rect = pygame.draw.rect(screen, BLUE, (middle_of_screen(username_text) - 70 + username_text.get_width(), 575, 100, 27))
+    screen.blit(friend_code_text, (WIDTH // 2 - friend_code_text.get_width() // 2 - 70, 565))
+    friend_code_input = pygame_input.TextInput(text_color=WHITE, font_family='arial', font_size=20)
+    friend_code_input.max_string_length = 6
     pygame.display.update()
+    clicked_username_box, clicked_friend_code_box = False, False
     run = True
     while run:
-        for event in pygame.event.get():
+        mouse_pos = pygame.mouse.get_pos()
+        if username_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1:
+            clicked_username_box = True
+            clicked_friend_code_box = False
+        elif friend_code_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0] == 1:
+            clicked_username_box = False
+            clicked_friend_code_box = True
+        elif pygame.mouse.get_pressed()[0] == 1:
+            clicked_username_box, clicked_friend_code_box = False, False
+
+        curr_events = pygame.event.get()
+        if clicked_username_box:
+            username_text_input.update(curr_events)
+        elif clicked_friend_code_box:
+            friend_code_input.update(curr_events)
+
+        username_rect = pygame.draw.rect(screen, BLUE, (middle_of_screen(username_text) - 140 + username_text.get_width(), 535, fifteen_chars.get_width()+5, 27))
+        screen.blit(username_text_input.get_surface(), (middle_of_screen(username_text) - 135 + username_text.get_width(), 535))
+        friend_code_rect = pygame.draw.rect(screen, BLUE, (middle_of_screen(username_text) - 70 + username_text.get_width(), 575, 100, 27))
+        screen.blit(friend_code_input.get_surface(), (middle_of_screen(username_text) - 65 + username_text.get_width(), 575))
+
+        pygame.display.update()
+        correct_info = False
+        for event in curr_events:
             if event.type == pygame.QUIT:
                 notify_server_and_leave()
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -642,6 +695,41 @@ def my_account_screen():
                 if main_menu_rect.collidepoint(event.pos):
                     run = False
                     menu_screen()
+                if add_friend_rect.collidepoint(event.pos):
+                    errors = ''
+                    # username = player_username
+                    friends_username = username_text_input.get_text()
+                    friend_code = friend_code_input.get_text()
+                    friends = general_msgs_network.send('GENERAL_get_friends:' + player_username)  # get this user's friends
+                    if player_username == friends_username:
+                        errors = 'You cannot add yourself as a friend.'
+                    elif friends_username in friends:
+                        errors = f"{friends_username} is already a friend."
+                    else:
+                        usernames = general_msgs_network.send('GENERAL_get_all_usernames')  # uses pickle
+                        if friends_username in usernames:
+                            expected_friend_code = general_msgs_network.send_and_receive('GENERAL_get_friend_code:' + friends_username)
+                            if friend_code == expected_friend_code:
+                                correct_info = True
+
+                    if correct_info:
+                        pygame.draw.rect(screen, BLACK, (211, 667, WIDTH, 54))
+                        text1 = SMALL_FONT.render("Adding friend...", 1, GREEN)
+                        screen.blit(text1, (middle_of_screen(text1) + 85, HEIGHT - 50))
+                        add_friend(f"{player_username}_{friends_username}")
+                        pygame.display.update()
+                        pygame.time.delay(500)
+                        text1 = SMALL_FONT.render("Added friend!", 1, GREEN)
+                        screen.blit(text1, (middle_of_screen(text1) + 85, HEIGHT - 50))
+                        pygame.display.update()
+                        # menu_screen()
+                    else:
+                        if not errors:
+                            errors = 'Information is invalid'
+                        pygame.draw.rect(screen, BLACK, (211, 667, WIDTH, 54))
+                        text1 = SMALL_FONT.render(errors, 1, RED)
+                        screen.blit(text1, (middle_of_screen(text1) + 85, HEIGHT - 50))
+                        pygame.display.update()
 
 
 def get_opponents_move(n) -> str:  # fix
@@ -1389,7 +1477,7 @@ def menu_screen():
                     g = Game(0)
                     g.run(screen)
                     menu_screen()
-                elif my_account_rect.collidepoint(event.pos):  # remember to add 'and player_username'
+                elif my_account_rect.collidepoint(event.pos) and player_username:  # remember to add 'and player_username'
                     my_account_screen()
                 elif leaderboard_rect.collidepoint(event.pos) and player_username:
                     leaderboard_screen()
