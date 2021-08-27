@@ -356,7 +356,8 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         game.drop_piece(the_row, col, turn + 1)
                         if game.is_winner(1):  # if player one has won
                             print(game.usernames)
-                            update_games_table(game.usernames[0], game.usernames[1])
+                            if game.usernames[0] != 'Guest' or game.usernames[1] != 'Guest':
+                                update_games_table(game.usernames[0], game.usernames[1])
                             numPeopleInGame -= 2
                             numGamesCompleted += 1
                             # print(game.print_board(game.board))

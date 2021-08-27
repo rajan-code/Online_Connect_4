@@ -316,7 +316,6 @@ def leaderboard_screen(only_friends=False):
                 notify_server_and_leave()
 
 
-
 def register_screen():
     global player_username
     screen.fill(BLACK)
@@ -413,6 +412,8 @@ def register_screen():
                         errors += 'Username cannot be empty. '
                     elif not username.isalnum():
                         errors += 'Username can only contain numbers and letters. '
+                    elif username == 'Guest':
+                        errors += 'Username is invalid. '
                     if len(password) < 4:
                         errors += 'Password must be at least 4 characters long. '
                     if not is_valid_email(email):
@@ -543,9 +544,9 @@ def login_screen():
     screen.blit(login_text, (middle_of_screen(login_text) + 1, 380))
 
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
-    main_menu_text.get_height() + 5), 1)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 75))
+
 
     #TODO forgot password option
 
@@ -608,6 +609,7 @@ def login_screen():
 
                     if correct_info:
                         print('logging in...')
+                        # send msg to server
                         pygame.draw.rect(screen, BLACK, (0, 548, WIDTH, 54))
                         text1 = SMALL_FONT.render("Signing in...", 1, GREEN)
                         screen.blit(text1, (middle_of_screen(text1), 555))
@@ -616,7 +618,7 @@ def login_screen():
                         menu_screen()
                     else:
                         errors = 'Login information is invalid.'
-                        pygame.draw.rect(screen, BLACK, (0, 548, WIDTH, 54))
+                        pygame.draw.rect(screen, BLACK, (0, 546, WIDTH, 54))
                         text1 = SMALL_FONT.render(errors, 1, RED)
                         screen.blit(text1, (middle_of_screen(text1), 555))
                         pygame.display.update()
@@ -648,6 +650,7 @@ def my_account_screen():
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
     main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE+25, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 50))
+    print('here ', main_menu_text.get_width() + 15)
 
     add_friends_text2 = SMALL_FONT.render("Add friend", 1, BLUE)
     screen.blit(add_friends_text2, (middle_of_screen(add_friends_text2), HEIGHT - 115))
@@ -707,7 +710,7 @@ def my_account_screen():
                     friend_code = friend_code_input.get_text()
                     friends = general_msgs_network.send('GENERAL_get_friends:' + player_username)  # get this user's friends
                     if player_username == friends_username:
-                        errors = 'You cannot add yourself as a friend.'
+                        errors = 'Information is invalid.'
                     elif friends_username in friends:
                         errors = f"{friends_username} is already a friend."
                     else:
@@ -718,12 +721,13 @@ def my_account_screen():
                                 correct_info = True
 
                     if correct_info:
-                        pygame.draw.rect(screen, BLACK, (211, 667, WIDTH, 54))
+                        pygame.draw.rect(screen, BLACK, (205, 667, WIDTH, 54))
                         text1 = SMALL_FONT.render("Adding friend...", 1, GREEN)
                         screen.blit(text1, (middle_of_screen(text1) + 85, HEIGHT - 50))
                         add_friend(f"{player_username}_{friends_username}")
                         pygame.display.update()
                         pygame.time.delay(500)
+                        pygame.draw.rect(screen, BLACK, (211, 667, WIDTH, 54))
                         text1 = SMALL_FONT.render("Added friend!", 1, GREEN)
                         screen.blit(text1, (middle_of_screen(text1) + 85, HEIGHT - 50))
                         pygame.display.update()
@@ -731,7 +735,7 @@ def my_account_screen():
                     else:
                         if not errors:
                             errors = 'Information is invalid'
-                        pygame.draw.rect(screen, BLACK, (211, 667, WIDTH, 54))
+                        pygame.draw.rect(screen, BLACK, (205, 667, WIDTH, 54))
                         text1 = SMALL_FONT.render(errors, 1, RED)
                         screen.blit(text1, (middle_of_screen(text1) + 85, HEIGHT - 50))
                         pygame.display.update()
@@ -949,8 +953,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                     if event.type == pygame.QUIT:
                                         notify_server_and_leave()
                                     if event.type == pygame.MOUSEBUTTONDOWN:
-                                        if main_menu_rect.collidepoint(
-                                                event.pos):
+                                        if main_menu_rect.collidepoint(event.pos):
                                             run3 = False
                                             menu_screen()
                         # pygame.event.pump()  # does not work
@@ -1014,11 +1017,8 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
                     main_menu_text.get_height() + 5), 1)
                     screen.blit(main_menu_text, (10, HEIGHT - 75))
-                    opponent_left_text = SMALL_FONT.render(
-                        'Your opponent has left.', 1, WHITE)
-                    screen.blit(opponent_left_text, (
-                    WIDTH - opponent_left_text.get_width() - 10,
-                    HEIGHT - 80 - SQUARE_SIZE + 40))
+                    opponent_left_text = SMALL_FONT.render('Your opponent has left.', 1, WHITE)
+                    screen.blit(opponent_left_text, (WIDTH - opponent_left_text.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 40))
                     pygame.display.update()
                     while run3:
                         # pygame.time.wait(3000)
@@ -1082,8 +1082,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     else:
                         label = font1.render("You lost.", 1, player_to_colour[player])
                 else:
-                    label = font1.render("It's a draw", 1,
-                                         player_to_colour[player])
+                    label = font1.render("It's a draw", 1, player_to_colour[player])
 
                 try:  # if var does not exist
                     print(opponent_username)
@@ -1093,8 +1092,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     score_txt = SMALL_FONT.render(("You " + str(game.score[0]) + ' - ' + str(game.score[1]) + " " + opponent_username), 1, WHITE)
                 else:
                     score_txt = SMALL_FONT.render(("You " + str(game.score[1]) + ' - ' + str(game.score[0]) + " " + opponent_username), 1, WHITE)
-                screen.blit(score_txt, (
-                WIDTH - score_txt.get_width() - 10, HEIGHT - 75 - SQUARE_SIZE))
+                screen.blit(score_txt, (WIDTH - score_txt.get_width() - 10, HEIGHT - 75 - SQUARE_SIZE))
                 screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
                 pygame.display.update()
                 accept_text = FONT2.render("Accept", 1, WHITE)
@@ -1112,13 +1110,11 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                         if event.type == pygame.MOUSEBUTTONDOWN:
                             if main_menu_rect.collidepoint(event.pos):
                                 run2 = False
-                                rejected_rematch = True
+                                # rejected_rematch = True
                                 n.client.setblocking(True)  # make socket blocking
-                                n.client.send(str.encode('rematch_rejected'))
+                                n.client.send(str.encode('opponent_left'))
                                 menu_screen()
-                            if request_rematch_rect.collidepoint(
-                                    event.pos) and not (
-                                    requested_rematch or opponent_requested_rematch):  # offer rematch
+                            if request_rematch_rect.collidepoint(event.pos) and not (requested_rematch or opponent_requested_rematch):  # offer rematch
                                 pygame.draw.rect(screen, BLACK, (
                                 0, HEIGHT - SQUARE_SIZE * 2, WIDTH,
                                 SQUARE_SIZE * 2))
@@ -1201,15 +1197,11 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
 
                             elif msg == 'opponent_left':
                                 run3 = True
-                                pygame.draw.rect(screen, BLACK, (
-                                WIDTH - request_rematch_text.get_width() - 20,
-                                HEIGHT - SQUARE_SIZE,
-                                request_rematch_text.get_width() + 15,
-                                request_rematch_text.get_height() + 5))
-                                main_menu_text = FONT2.render("Main Menu", 1,
-                                                              WHITE)
-                                main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
-                                screen.blit(main_menu_text, (10, HEIGHT - 75))
+                                pygame.draw.rect(screen, BLACK, (WIDTH - request_rematch_text.get_width() - 20, HEIGHT - SQUARE_SIZE*2,
+                                request_rematch_text.get_width() + 15, request_rematch_text.get_height() + 5 + 30))
+                                # main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+                                # main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                                # screen.blit(main_menu_text, (10, HEIGHT - 75))
                                 opponent_left_text = SMALL_FONT.render('Your opponent has left.', 1, WHITE)
                                 screen.blit(opponent_left_text, (WIDTH - opponent_left_text.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 40))
                                 pygame.display.update()
@@ -1367,7 +1359,7 @@ def menu_screen():
     else:
         username_text = VERY_SMALL_FONT.render('Signed in as ' + player_username, 1, GREEN)
         leaderboard_text = FONT2.render("Leaderboard", 1, WHITE)
-        leaderboard_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE+25, leaderboard_text.get_width() + 15, leaderboard_text.get_height() + 5), 1)
+        leaderboard_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE+25, leaderboard_text.get_width() + 15, leaderboard_text.get_height() + 5), 1)
         my_account_text = FONT2.render("My Account", 1, WHITE)
         my_account_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE+25-(leaderboard_text.get_height() + 5)-5, my_account_text.get_width() + 15, my_account_text.get_height() + 5), 1)
         register_text = SMALL_FONT.render("Register", 1, GRAY)
