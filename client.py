@@ -18,7 +18,7 @@ pygame.mixer.init()
 pygame.mixer.music.set_volume(0.5)  # Sets the volume of the music (0-1.0)
 WON_GAME_SOUND = pygame.mixer.Sound('music/won_game.wav')
 CLICK_SOUND = pygame.mixer.Sound('music/click_sound.wav')
-BACKGROUND_IMG = pygame.image.load('menu_background.jfif')
+BACKGROUND_IMG = pygame.image.load('pics/menu_background.jfif')
 
 NUM_ROWS = 6
 NUM_COLUMNS = 7
