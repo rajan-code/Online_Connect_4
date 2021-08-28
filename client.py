@@ -540,6 +540,11 @@ def login_screen():
     password_rect = pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310, 10 + twenty_chars.get_width(), 27))
     clicked_username_box, clicked_password_box = False, False
 
+    show_pswd_rect = pygame.draw.rect(screen, WHITE, (5 + middle_of_screen(twenty_chars) + twenty_chars.get_width(), 310, 60, 27))
+    show_password = False
+    show_password_text = {False: VERY_SMALL_FONT.render("Hide", 1, BLACK), True: VERY_SMALL_FONT.render("Show", 1, BLACK)}
+    screen.blit(show_password_text[not show_password], (WIDTH - 60, 310))
+
     login_text = SMALL_FONT.render("Login", 1, WHITE)
     login_rect = pygame.draw.rect(screen, WHITE, (246, 380, login_text.get_width() + 10, login_text.get_height() + 5), 1)
     screen.blit(login_text, (middle_of_screen(login_text) + 1, 380))
@@ -548,12 +553,12 @@ def login_screen():
     main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 75))
 
-
     #TODO forgot password option
 
     pygame.display.update()
     run = True
     correct_info = False
+    print(show_password)
     while run:
         mouse_pos = pygame.mouse.get_pos()
 
@@ -571,6 +576,7 @@ def login_screen():
             username_text_input.update(curr_events)
         elif clicked_password_box:
             password_text_input.update(curr_events)
+
         pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 210, 10 + twenty_chars.get_width(), 27))  # username rect
         screen.blit(username_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 210))
         pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310, 10 + twenty_chars.get_width(), 27))  # password rect
@@ -584,7 +590,18 @@ def login_screen():
                 if main_menu_rect.collidepoint(event.pos):
                     run = False
                     menu_screen()
-                if login_rect.collidepoint(event.pos):
+                elif show_pswd_rect.collidepoint(mouse_pos):
+                    show_password = not show_password
+                    password_text_input.password = show_password  # whether or not password will be filled with *
+                    clicked_username_box, clicked_password_box = False, False
+                    password_text_input.update([])
+                    the_text = show_password_text[show_password]
+                    show_pswd_rect = pygame.draw.rect(screen, WHITE, (5 + middle_of_screen(twenty_chars) + twenty_chars.get_width(), 310, 60, 27))
+                    screen.blit(the_text, (WIDTH - 60, 310))
+                    pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310, 10 + twenty_chars.get_width(), 27))  # password rect
+                    screen.blit(password_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310))
+                    pygame.display.update()
+                elif login_rect.collidepoint(event.pos):
                     errors = ''
                     username = username_text_input.get_text()
                     password = password_text_input.get_text()
