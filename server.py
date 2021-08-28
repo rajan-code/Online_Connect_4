@@ -248,7 +248,8 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
             # peek = conn.recv(1024*4, socket.MSG_PEEK).decode('utf-8')
             data2 = conn.recv(1024 * 4).decode()
             # data = conn.recv(1024).decode()
-            print('Server received1: ', data2)
+            if data2 != 'get':
+                print('Server received1: ', data2)
 
             if gameId in games:
                 game = games[gameId]
@@ -433,7 +434,7 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
         game = games[gameId]
         if not(game.is_winner(1) or game.is_winner(2) or game.is_draw()):  # if game was not over and a player left
             numPeopleInGame -= 2
-    except IndexError:
+    except (IndexError, KeyError):
         pass
     if gameId in private_game_ids:
         private_game_ids.remove(gameId)
@@ -511,7 +512,7 @@ def general_connection(conn, curr_data):
     while True:
         try:
             data3 = conn.recv(1024 * 4).decode()
-            print('Server received3:', data3)
+            # print('Server received3:', data3)
             if data3 == 'GENERAL_get_num_people_in_game':
                 conn.send(str.encode(str(numPeopleInGame)))
                 print('Server sent: ', numPeopleInGame)

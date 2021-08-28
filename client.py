@@ -977,8 +977,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 game.turn = int(not player)
                 label = font1.render("Opponent's turn", 1,
                                      player_to_colour[player])
-                pygame.draw.rect(screen, BLACK, (
-                0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
+                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
                 screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
                 pygame.display.update()
                 print("Opponent's turn")
@@ -1012,7 +1011,27 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                         pass
                 n.client.setblocking(True)  # make socket blocking
                 print('Client received2: ', msg)
-                if msg == 'opponent_left':
+                if len(msg) == len('P0_WONopponent_requested_rematch') and 'WON' in msg:
+                    # game_winner = int(msg[1])  # 0 or 1
+                    # game.score[game_winner] += 1
+                    # print('score ', game.score)
+                    # pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
+                    # main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+                    # main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
+                    # main_menu_text.get_height() + 5), 1)
+                    # screen.blit(main_menu_text, (10, HEIGHT - 75))
+                    opponent_requested_rematch = True
+                    msg = msg[:6]
+
+                elif len(msg) == len('0:(1,4)P0_WON') and (msg[-3:] == 'WON' or 'DRAW' in msg):  # bug
+                    player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
+                    game.drop_piece(row, col, player_who_just_moved + 1)
+                    updateBoard(game, row, col, player_who_just_moved + 1)
+                    game.print_board(game.board)
+                    game.turn = int(not player_who_just_moved)  # can remove game.turn stuff
+                    msg = msg[7:]
+
+                elif msg == 'opponent_left':
                     run3 = True
                     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
                     main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
@@ -1035,20 +1054,17 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
                 screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
                 pygame.display.update()
-                if len(msg) == len(
-                        '1:(1,0)0_move') and '_move' in msg and ':' in msg:  # don't need anymore
+                if len(msg) == len('1:(1,0)0_move') and '_move' in msg and ':' in msg:  # don't need anymore
                     print('bug happened')
                     bug = True
                     msg, other_msg = msg[:7], msg[7:]
 
             if len(msg) == 7 and 0 <= int(msg[0]) <= 1 and 0 <= int(msg[3]) <= 5 and 0 <= int(msg[5]) <= 6:  # received player:(row,col)
-                player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(
-                    msg[5])
+                player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
                 game.drop_piece(row, col, player_who_just_moved + 1)
                 updateBoard(game, row, col, player_who_just_moved + 1)
                 game.print_board(game.board)
-                game.turn = int(
-                    not player_who_just_moved)  # can remove game.turn stuff
+                game.turn = int(not player_who_just_moved)  # can remove game.turn stuff
                 try:
                     if bug and other_msg:
                         msg = other_msg
@@ -1070,21 +1086,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
                 main_menu_text.get_height() + 5), 1)
                 screen.blit(main_menu_text, (10, HEIGHT - 75))
+                accept_text = FONT2.render("Accept", 1, WHITE)
+                reject_text = FONT2.render("Reject", 1, WHITE)
                 request_rematch_text = FONT2.render("Request rematch", 1, WHITE)
-                request_rematch_rect = pygame.draw.rect(screen, WHITE, (WIDTH - request_rematch_text.get_width() - 20, HEIGHT - SQUARE_SIZE, request_rematch_text.get_width() + 15,
-                request_rematch_text.get_height() + 5), 1)
-                screen.blit(request_rematch_text, (WIDTH - request_rematch_text.get_width() - 10, HEIGHT - 80))
-
-                # note that accept_text and rect are not drawn to screen yet
-                if 'WON' in msg:
-                    if game_winner == player:
-                        label = font1.render("You Won!", 1, player_to_colour[player])
-                        pygame.mixer.Sound.play(WON_GAME_SOUND)
-                    else:
-                        label = font1.render("You lost.", 1, player_to_colour[player])
-                else:
-                    label = font1.render("It's a draw", 1, player_to_colour[player])
-
+                request_rematch_rect = pygame.Rect(WIDTH - request_rematch_text.get_width() - 20, HEIGHT - SQUARE_SIZE, request_rematch_text.get_width() + 15, request_rematch_text.get_height() + 5)
                 try:  # if var does not exist
                     print(opponent_username)
                 except (NameError, UnboundLocalError):
@@ -1094,10 +1099,40 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 else:
                     score_txt = SMALL_FONT.render(("You " + str(game.score[1]) + ' - ' + str(game.score[0]) + " " + opponent_username), 1, WHITE)
                 screen.blit(score_txt, (WIDTH - score_txt.get_width() - 10, HEIGHT - 75 - SQUARE_SIZE))
+                if 'WON' in msg:
+                    if game_winner == player:
+                        label = font1.render("You Won!", 1, player_to_colour[player])
+                        pygame.mixer.Sound.play(WON_GAME_SOUND)
+                    else:
+                        label = font1.render("You lost.", 1, player_to_colour[player])
+                else:
+                    label = font1.render("It's a draw", 1, player_to_colour[player])
+
                 screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
                 pygame.display.update()
-                accept_text = FONT2.render("Accept", 1, WHITE)
-                reject_text = FONT2.render("Reject", 1, WHITE)
+                pygame.time.wait(1000)
+
+                if not opponent_requested_rematch:
+                    request_rematch_rect = pygame.draw.rect(screen, WHITE, (WIDTH - request_rematch_text.get_width() - 20, HEIGHT - SQUARE_SIZE, request_rematch_text.get_width() + 15, request_rematch_text.get_height() + 5), 1)
+                    screen.blit(request_rematch_text, (WIDTH - request_rematch_text.get_width() - 10, HEIGHT - 80))
+
+                else:
+                    pygame.draw.rect(screen, BLACK, (0, HEIGHT - 80 - SQUARE_SIZE + 40, WIDTH, SQUARE_SIZE * 2))
+                    pygame.draw.rect(screen, BLACK, (0, HEIGHT-SQUARE_SIZE*2, WIDTH//2, label.get_height()+5))
+                    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+                    main_menu_rect = pygame.draw.rect(screen, WHITE,(0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                    screen.blit(main_menu_text, (10, HEIGHT - 75))
+                    opponent_requested_rematch = True
+                    rematch_text2 = SMALL_FONT.render("Your opponent has requested a rematch.", 1, WHITE)
+                    screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 40))
+                    accept_rect = pygame.draw.rect(screen, WHITE, (WIDTH - accept_text.get_width() - reject_text.get_width() - 40, HEIGHT - SQUARE_SIZE, accept_text.get_width() + 15, accept_text.get_height() + 5), 1)
+                    reject_rect = pygame.draw.rect(screen, WHITE, (WIDTH - reject_text.get_width() - 20, HEIGHT - SQUARE_SIZE, reject_text.get_width() + 15, reject_text.get_height() + 5), 1)
+                    screen.blit(reject_text, (WIDTH - reject_text.get_width() - 10, HEIGHT - 80))
+                    screen.blit(accept_text, (WIDTH - accept_text.get_width() - reject_text.get_width() - 34, HEIGHT - 80))
+                pygame.display.update()
+
+                # note that accept_text and rect are not drawn to screen yet
+
                 # note that these are not drawn to screen yet
                 accept_rect = pygame.draw.rect(screen, WHITE, (WIDTH - accept_text.get_width() - reject_text.get_width() - 40, HEIGHT - SQUARE_SIZE, accept_text.get_width() + 15, accept_text.get_height() + 5), 1)
                 reject_rect = pygame.draw.rect(screen, WHITE, (WIDTH - reject_text.get_width() - 20, HEIGHT - SQUARE_SIZE, reject_text.get_width() + 15, reject_text.get_height() + 5), 1)
@@ -1166,13 +1201,14 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                             msg = n.client.recv(1024).decode('utf-8')  # check if opponent requested rematch
                             print('Client received: ', msg)
                             if msg == 'opponent_requested_rematch':
-                                pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE * 2))
+                                pygame.draw.rect(screen, BLACK, (0, HEIGHT - 80 - SQUARE_SIZE + 40, WIDTH, SQUARE_SIZE * 2))
+                                pygame.draw.rect(screen, BLACK, (0, HEIGHT-SQUARE_SIZE*2, WIDTH//2, label.get_height()+5))
                                 main_menu_text = FONT2.render("Main Menu", 1, WHITE)
                                 main_menu_rect = pygame.draw.rect(screen, WHITE,(0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                                 screen.blit(main_menu_text, (10, HEIGHT - 75))
                                 opponent_requested_rematch = True
                                 rematch_text2 = SMALL_FONT.render("Your opponent has requested a rematch.", 1, WHITE)
-                                screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE))
+                                screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 40))
                                 accept_rect = pygame.draw.rect(screen, WHITE, (WIDTH - accept_text.get_width() - reject_text.get_width() - 40, HEIGHT - SQUARE_SIZE, accept_text.get_width() + 15, accept_text.get_height() + 5), 1)
                                 reject_rect = pygame.draw.rect(screen, WHITE, (WIDTH - reject_text.get_width() - 20, HEIGHT - SQUARE_SIZE, reject_text.get_width() + 15, reject_text.get_height() + 5), 1)
                                 screen.blit(reject_text, (WIDTH - reject_text.get_width() - 10, HEIGHT - 80))
@@ -1428,6 +1464,7 @@ def menu_screen():
     screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width() // 2 + 5, pointer + two_player_text.get_height() + 25 + vs_cpu_text.get_height()))
     pygame.display.update()
     pointer = 185 + 70
+    show_text = False
 
     while run:
         clock.tick(60)
@@ -1475,10 +1512,10 @@ def menu_screen():
             mouse_pos = pygame.mouse.get_pos()
             # if event.type == pygame.MOUSEMOTION:
             if (my_account_rect.collidepoint(mouse_pos) or leaderboard_rect.collidepoint(mouse_pos)) and not player_username:
-                small_txt = VERY_SMALL_FONT.render("You must be signed in to use this feature.", 1, WHITE)
-                screen.blit(small_txt, (10, HEIGHT - 150))
+                show_text = True
             else:
-                pygame.draw.rect(screen, BLACK, (0, 569, 405, 30))
+                show_text = False
+
             if public_rect.collidepoint(mouse_pos):  # public game
                 public_text = SMALL_FONT.render("Public", 1, GREEN)
                 public_rect = pygame.draw.rect(screen, (0, 255, 0), (WIDTH // 2 - public_text.get_width() - 40, pointer + 50 - 5,
@@ -1507,6 +1544,12 @@ def menu_screen():
             else:
                 vs_cpu_text = SMALL_FONT.render("Single Player", 1, WHITE)
                 vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
+
+        if show_text:
+            small_txt = VERY_SMALL_FONT.render("You must be signed in to use this feature.", 1, WHITE)
+            screen.blit(small_txt, (10, HEIGHT - 150))
+        else:
+            pygame.draw.rect(screen, BLACK, (0, 569, 405, 30))
 
         screen.blit(public_text, (WIDTH // 2 - public_text.get_width() - 35,
                                   pointer + online_text.get_height()))
