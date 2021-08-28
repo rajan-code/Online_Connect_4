@@ -937,16 +937,11 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                             # msg = n.client.recv(1024).decode('utf-8')
                             run3 = True
                             main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                            main_menu_rect = pygame.draw.rect(screen, WHITE, (
-                            0, HEIGHT - SQUARE_SIZE,
-                            main_menu_text.get_width() + 15,
-                            main_menu_text.get_height() + 5), 1)
+                            main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                            pygame.draw.rect(screen, BLACK, (main_menu_text.get_width() + 20, HEIGHT - SQUARE_SIZE, WIDTH, main_menu_text.get_height() + 5))
                             screen.blit(main_menu_text, (10, HEIGHT - 75))
-                            opponent_left_text = SMALL_FONT.render(
-                                'Your opponent has left.', 1, WHITE)
-                            screen.blit(opponent_left_text, (
-                            WIDTH - opponent_left_text.get_width() - 10,
-                            HEIGHT - 80 - SQUARE_SIZE + 40))
+                            opponent_left_text = SMALL_FONT.render('Your opponent has left.', 1, WHITE)
+                            screen.blit(opponent_left_text, (WIDTH - opponent_left_text.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 40))
                             pygame.display.update()
                             while run3:
                                 # pygame.time.wait(3000)
@@ -1024,6 +1019,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     msg = msg[:6]
 
                 elif len(msg) == len('0:(1,4)P0_WON') and (msg[-3:] == 'WON' or 'DRAW' in msg):  # bug
+                    pygame.mixer.Sound.play(CLICK_SOUND)
                     player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
                     game.drop_piece(row, col, player_who_just_moved + 1)
                     updateBoard(game, row, col, player_who_just_moved + 1)
@@ -1038,6 +1034,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     main_menu_text.get_height() + 5), 1)
                     screen.blit(main_menu_text, (10, HEIGHT - 75))
                     opponent_left_text = SMALL_FONT.render('Your opponent has left.', 1, WHITE)
+                    pygame.draw.rect(screen, BLACK, (main_menu_text.get_width() + 20, HEIGHT - SQUARE_SIZE, WIDTH, main_menu_text.get_height() + 5), 1)
                     screen.blit(opponent_left_text, (WIDTH - opponent_left_text.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 40))
                     pygame.display.update()
                     while run3:
@@ -1060,6 +1057,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     msg, other_msg = msg[:7], msg[7:]
 
             if len(msg) == 7 and 0 <= int(msg[0]) <= 1 and 0 <= int(msg[3]) <= 5 and 0 <= int(msg[5]) <= 6:  # received player:(row,col)
+                pygame.mixer.Sound.play(CLICK_SOUND)
                 player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
                 game.drop_piece(row, col, player_who_just_moved + 1)
                 updateBoard(game, row, col, player_who_just_moved + 1)
@@ -1077,7 +1075,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                         msg = n.client.recv(1024).decode(
                             'utf-8')  # '0_move' or '1_move'
                         print('Client received3: ', msg)
-            if (len(msg) == 6 and 'WON' in msg) or msg == 'DRAW':  # game is over
+            elif (len(msg) == 6 and 'WON' in msg) or msg == 'DRAW':  # game is over
                 game_winner = int(msg[1])  # 0 or 1
                 game.score[game_winner] += 1
                 print('score ', game.score)
@@ -1234,8 +1232,8 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
 
                             elif msg == 'opponent_left':
                                 run3 = True
-                                pygame.draw.rect(screen, BLACK, (WIDTH - request_rematch_text.get_width() - 20, HEIGHT - SQUARE_SIZE*2,
-                                request_rematch_text.get_width() + 15, request_rematch_text.get_height() + 5 + 30))
+                                pygame.draw.rect(screen, BLACK, (WIDTH - request_rematch_text.get_width() - 20, HEIGHT - SQUARE_SIZE*2, request_rematch_text.get_width() + 15, request_rematch_text.get_height() + 5 + 30))
+                                pygame.draw.rect(screen, BLACK, (261, 633, WIDTH, HEIGHT))
                                 # main_menu_text = FONT2.render("Main Menu", 1, WHITE)
                                 # main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                                 # screen.blit(main_menu_text, (10, HEIGHT - 75))
@@ -1248,8 +1246,8 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                         if event.type == pygame.QUIT:
                                             notify_server_and_leave()
                                         if event.type == pygame.MOUSEBUTTONDOWN:
-                                            if main_menu_rect.collidepoint(
-                                                    event.pos):
+                                            print(event.pos)
+                                            if main_menu_rect.collidepoint(event.pos):
                                                 run3 = False
                                                 menu_screen()
 
