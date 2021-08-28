@@ -541,9 +541,9 @@ def login_screen():
     clicked_username_box, clicked_password_box = False, False
 
     show_pswd_rect = pygame.draw.rect(screen, WHITE, (5 + middle_of_screen(twenty_chars) + twenty_chars.get_width(), 310, 60, 27))
-    show_password = False
+    show_password = True
     show_password_text = {False: VERY_SMALL_FONT.render("Hide", 1, BLACK), True: VERY_SMALL_FONT.render("Show", 1, BLACK)}
-    screen.blit(show_password_text[not show_password], (WIDTH - 60, 310))
+    screen.blit(show_password_text[True], (WIDTH - 60, 310))
 
     login_text = SMALL_FONT.render("Login", 1, WHITE)
     login_rect = pygame.draw.rect(screen, WHITE, (246, 380, login_text.get_width() + 10, login_text.get_height() + 5), 1)
