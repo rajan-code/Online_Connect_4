@@ -34,7 +34,7 @@ GRAY = (128, 128, 128)
 
 SQUARE_SIZE = 80
 WIDTH = NUM_COLUMNS * SQUARE_SIZE
-HEIGHT = (NUM_ROWS + 2) * SQUARE_SIZE + (SQUARE_SIZE)
+HEIGHT = (NUM_ROWS + 2) * SQUARE_SIZE + SQUARE_SIZE
 RADIUS = (SQUARE_SIZE // 2) - 5
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Client')

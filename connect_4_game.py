@@ -140,11 +140,11 @@ class Game:
 
             if 0. not in self.board:
                 label = font1.render("It's a tie!", 1, WHITE)
-                pygame.draw.rect(win, BLACK,
-                                 (0, HEIGHT - SQUARE_SIZE, WIDTH, SQUARE_SIZE))
+                pygame.draw.rect(win, BLACK, (0, HEIGHT - SQUARE_SIZE*2, WIDTH, SQUARE_SIZE*2))
                 win.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
                 pygame.display.update((0, HEIGHT - SQUARE_SIZE*2, WIDTH, SQUARE_SIZE*2))
                 self.game_over = True
+                break
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -214,6 +214,10 @@ class Game:
                                 break
                         # pygame.time.wait(1500)
         run = True
+        main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+        main_menu_rect = pygame.draw.rect(win, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+        win.blit(main_menu_text, (10, HEIGHT - 75))
+        pygame.display.update()
         while run:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
