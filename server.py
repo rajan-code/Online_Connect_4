@@ -451,12 +451,25 @@ def general_connection(conn, curr_data):
     if curr_data == 'GENERAL_get_num_people_in_game':
         conn.send(str.encode(str(numPeopleInGame)))
         print('Server sent: ', numPeopleInGame)
+    elif 'GENERAL_NOW_ONLINE:' in curr_data:
+        colon_index = curr_data.index(':')
+        username = curr_data[colon_index + 1:]
+        username_to_status[username] = True
+        print(username_to_status)
     elif curr_data == 'GENERAL_someone_joined':
         numPeopleOnline += 1
         print('number of ppl online:', numPeopleOnline)
     elif curr_data == 'GENERAL_someone_leaving':
         numPeopleOnline -= 1
         print('number of ppl online:', numPeopleOnline)
+    elif 'GENERAL_NOW_OFFLINE:' in curr_data:
+        colon_index_ = curr_data.index(':')
+        username = curr_data[colon_index_ + 1:]
+        username_to_status[username] = False
+        print(username_to_status)
+        numPeopleOnline -= 1
+        print('number of ppl online:', numPeopleOnline)
+        conn.close()
     elif curr_data == 'GENERAL_get_num_people_online':
         conn.send(str.encode(str(numPeopleOnline)))
     elif curr_data == 'GENERAL_get_all_usernames':
@@ -516,10 +529,23 @@ def general_connection(conn, curr_data):
             if data3 == 'GENERAL_get_num_people_in_game':
                 conn.send(str.encode(str(numPeopleInGame)))
                 print('Server sent: ', numPeopleInGame)
+            elif 'GENERAL_NOW_ONLINE:' in data3:
+                colon_index_ = data3.index(':')
+                username = data3[colon_index_ + 1:]
+                username_to_status[username] = True
+                print(username_to_status)
             elif data3 == 'GENERAL_someone_joined':
                 numPeopleOnline += 1
                 print('number of ppl online:', numPeopleOnline)
             elif data3 == 'GENERAL_someone_leaving':
+                numPeopleOnline -= 1
+                print('number of ppl online:', numPeopleOnline)
+                conn.close()
+            elif 'GENERAL_NOW_OFFLINE:' in data3:
+                colon_index_ = data3.index(':')
+                username = data3[colon_index_ + 1:]
+                username_to_status[username] = False
+                print(username_to_status)
                 numPeopleOnline -= 1
                 print('number of ppl online:', numPeopleOnline)
                 conn.close()

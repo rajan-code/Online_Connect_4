@@ -51,6 +51,7 @@ VERY_SMALL_FONT2 = pygame.font.SysFont("arial", 20)
 curr_screen_is_menu_screen = True
 print_lock = threading.Lock()
 player_username = ''   # use this in menu_screen()
+player_friend_code = ''
 music_on = True
 
 
@@ -178,7 +179,11 @@ def is_valid_email(email: str) -> bool:
 
 
 def notify_server_and_leave():
-    general_msgs_network.client.send(str.encode('GENERAL_someone_leaving'))
+    global player_username
+    if player_username != '':
+        general_msgs_network.client.send(str.encode('GENERAL_NOW_OFFLINE:' + player_username))
+    else:
+        general_msgs_network.client.send(str.encode('GENERAL_someone_leaving'))
     print('Client sent: ', 'GENERAL_someone_leaving')
     pygame.quit()
     sys.exit(0)
@@ -632,6 +637,8 @@ def login_screen():
                         text1 = SMALL_FONT.render("Signing in...", 1, GREEN)
                         screen.blit(text1, (middle_of_screen(text1), 555))
                         pygame.display.update()
+                        # send msg to server
+                        general_msgs_network.client.send(str.encode('GENERAL_NOW_ONLINE:' + username))
                         pygame.time.delay(500)
                         menu_screen()
                     else:
@@ -643,12 +650,16 @@ def login_screen():
 
 
 def my_account_screen():
-    global player_username
+    global player_username, player_friend_code
     screen.fill(BLACK)
     username_text = MEDIUM_FONT.render(player_username, 1, CYAN)
     screen.blit(username_text, (middle_of_screen(username_text), 0))
     # email = general_msgs_network.send_and_receive('GENERAL_get_email_given_username:' + player_username)
-    my_friend_code = general_msgs_network.send_and_receive('GENERAL_get_friend_code:' + player_username)
+    if player_friend_code == '':
+        my_friend_code = general_msgs_network.send_and_receive('GENERAL_get_friend_code:' + player_username)
+        player_friend_code = my_friend_code
+    else:
+        my_friend_code = player_friend_code
     # print(email)
     # email_text = SMALL_FONT.render(email, 1, WHITE)
     # screen.blit(email_text, (middle_of_screen(email_text), 60))
