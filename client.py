@@ -1498,6 +1498,8 @@ def menu_screen():
     global curr_screen_is_menu_screen, player_username
     screen.fill(BLACK)
     screen.blit(BACKGROUND_IMG, (0, 0))
+    screen.blit(REFRESH_BUTTON, (WIDTH - REFRESH_BUTTON.get_width(), 0))
+    refresh_rect = pygame.Rect((WIDTH - REFRESH_BUTTON.get_width(), 0, REFRESH_BUTTON.get_width(), REFRESH_BUTTON.get_height()))
     if player_username == '':  # if user is not signed in
         username_text = VERY_SMALL_FONT.render('Playing as Guest', 1, WHITE)
         leaderboard_text = FONT2.render("Leaderboard", 1, GRAY)
@@ -1521,15 +1523,16 @@ def menu_screen():
 
     screen.blit(my_account_text, (10, HEIGHT - 110))
     screen.blit(leaderboard_text, (10, HEIGHT - 50))
-    screen.blit(username_text, (WIDTH - username_text.get_width() - 10, 5))
+    screen.blit(username_text, (5, 5))
 
     curr_screen_is_menu_screen = True
-    prev_time = int(time.time())
+    curr_time = time.time()
     num_people_online, num_people_in_game = refresh()  # refresh number of people in game every 5 seconds
     num_people_online_text = VERY_SMALL_FONT.render('Number of players online: ' + str(num_people_online), 1, WHITE)
     num_ppl_in_game_text = VERY_SMALL_FONT.render('Number of players in a game: ' + str(num_people_in_game), 1, WHITE)
     screen.blit(num_people_online_text, (WIDTH - num_people_online_text.get_width() - 10, HEIGHT - 55))
     screen.blit(num_ppl_in_game_text, (WIDTH - num_ppl_in_game_text.get_width() - 10, HEIGHT - 30))
+    updated = True
     pygame.display.update()
     # print(f'There are {num_people_in_game} people in a game right now.')
     # print('client sent: ', 'get_num_people_online')
@@ -1567,8 +1570,7 @@ def menu_screen():
 
     pointer += 120
     online_text = FONT2.render("Offline", 1, BLUE)
-    screen.blit(online_text,
-                (WIDTH // 2 - online_text.get_width() // 2, pointer))
+    screen.blit(online_text, (WIDTH // 2 - online_text.get_width() // 2, pointer))
     vs_cpu_text = SMALL_FONT.render("Single Player", 1, WHITE)
     vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, pointer + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
     screen.blit(vs_cpu_text, (WIDTH // 2 - vs_cpu_text.get_width() // 2 + 5,
@@ -1578,24 +1580,13 @@ def menu_screen():
     screen.blit(two_player_text, (WIDTH // 2 - two_player_text.get_width() // 2 + 5, pointer + two_player_text.get_height() + 25 + vs_cpu_text.get_height()))
     pygame.display.update()
     pointer = 185 + 70
-    show_text = False
+    show_text = False  # show_text is for showing 'You must be signed in to use this feature...'
+    updating_text = VERY_SMALL_FONT.render('Updating...', 1, WHITE)
+    screen.blit(updating_text, (WIDTH - updating_text.get_width() - 10, HEIGHT - 80))
 
     while run:
         clock.tick(60)
         # make refresh button instead
-        curr_time = int(time.time())
-        if curr_time == prev_time + 5:  # if its been 5 sec
-            prev_time = curr_time
-            num_people_online, num_people_in_game = refresh()  # refresh number of people in game
-            pygame.draw.rect(screen, BLACK, (246, 656, WIDTH-246, HEIGHT-656))
-            num_people_online_text = VERY_SMALL_FONT.render('Number of players online: ' + str(num_people_online), 1, WHITE)
-            num_ppl_in_game_text = VERY_SMALL_FONT.render('Number of players in a game: ' + str(num_people_in_game), 1, WHITE)
-            screen.blit(num_people_online_text, (WIDTH - num_people_online_text.get_width() - 10, HEIGHT - 55))
-            screen.blit(num_ppl_in_game_text, (WIDTH - num_ppl_in_game_text.get_width() - 10, HEIGHT - 30))
-            pygame.display.update()
-
-            print('refreshed', curr_time)
-            # start_time = int(time.time())
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -1608,6 +1599,20 @@ def menu_screen():
                     print('public game')
                     # run = False
                     main('public', '', None, False)
+                elif refresh_rect.collidepoint(event.pos) and curr_time + 5 < time.time():
+                    curr_time = time.time()
+                    num_people_online, num_people_in_game = refresh()  # refresh number of people in game
+                    pygame.draw.rect(screen, BLACK, (246, 667, WIDTH-246, HEIGHT-656))
+                    updating_text = VERY_SMALL_FONT.render('Updating...', 1, WHITE)
+                    num_people_online_text = VERY_SMALL_FONT.render('Number of players online: ' + str(num_people_online), 1, WHITE)
+                    num_ppl_in_game_text = VERY_SMALL_FONT.render('Number of players in a game: ' + str(num_people_in_game), 1, WHITE)
+                    screen.blit(num_people_online_text, (WIDTH - num_people_online_text.get_width() - 10, HEIGHT - 55))
+                    screen.blit(num_ppl_in_game_text, (WIDTH - num_ppl_in_game_text.get_width() - 10, HEIGHT - 30))
+                    screen.blit(updating_text, (WIDTH - updating_text.get_width() - 10, HEIGHT - 80))
+                    pygame.display.update()
+                    updated = True
+                    print('refreshed', curr_time)
+
                 elif login_rect.collidepoint(event.pos) and not player_username:
                     login_screen()
                 elif register_rect.collidepoint(event.pos) and not player_username:  # if they are currently playing as guest
@@ -1660,6 +1665,10 @@ def menu_screen():
                 vs_cpu_text = SMALL_FONT.render("Single Player", 1, WHITE)
                 vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
 
+        if updated and curr_time + 1 < time.time():
+            pygame.draw.rect(screen, BLACK, (440, 639, WIDTH-440, updating_text.get_height()))  # cover 'Updating...'
+            pygame.display.update()
+            updated = False
         if show_text:
             small_txt = VERY_SMALL_FONT.render("You must be signed in to use this feature.", 1, WHITE)
             screen.blit(small_txt, (10, HEIGHT - 150))
