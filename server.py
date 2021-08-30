@@ -459,10 +459,10 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
     clients.remove(conn)
     if conn in game_id_to_players[gameId]:
         game_id_to_players[gameId].remove(conn)
-        if game_type == 'public':
-            publicIdCount -= 1
+
     print('b ', game_id_to_players[gameId])
     conn.close()
+    del conn_to_addr[conn]
     try:
         other_player = game_id_to_players[gameId][0]
         other_player.send(str.encode('opponent_left'))
@@ -673,6 +673,7 @@ while True:
             p = 0
             gameId = (publicIdCount - 1)//2
             # privateGameId
+            print('public id', publicIdCount)
             if publicIdCount % 2 == 1:
                 games[gameId] = Game(gameId)
                 game_id_to_players[gameId] = [conn]
