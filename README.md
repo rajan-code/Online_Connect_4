@@ -9,7 +9,7 @@ Users can currently:
   - see which of their friends are currently online 
   
 Installation requirements:  
-pygame  
+pygame, numpy   
   
 Instructions:  
 The folders/files you need are music/, client.py, pygame_input.py, and connect_4_game.py.  
