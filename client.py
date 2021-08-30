@@ -1547,7 +1547,7 @@ def menu_screen():
     title_text = TITLE_FONT.render("Connect 4", 1, (255, 255, 0))
     screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 75))
     pygame.display.update()
-    pointer = 185  # starting vertical line
+    pointer = 185  # starting horizontal line
 
     # pygame.draw.line(screen, WHITE, (WIDTH//2, 0), (WIDTH//2, HEIGHT), 1)
     # register_text = SMALL_FONT.render("Register", 1, WHITE)

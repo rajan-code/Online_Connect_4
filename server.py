@@ -46,6 +46,7 @@ numPeopleOnline = 0
 numGamesCompleted = 0
 numPeopleInGame = 0
 username_to_status = dict()  # keeps track of which users are currently online
+conn_to_addr = dict()  # socket -> str
 
 """
 class Server:
@@ -197,6 +198,7 @@ def get_friend_code(username: str) -> str:
     cmd = f"SELECT friendCode FROM Players WHERE username='{username}'"
     mycursor.execute(cmd)
     return str(mycursor.fetchone()[0])
+
 
 def update_games_table(winner: str, loser: str, is_draw=False):
     """
@@ -378,8 +380,11 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                         game.drop_piece(the_row, col, turn + 1)
                         if game.is_winner(1):  # if player one has won
                             print(game.usernames)
-                            if game.usernames[0] != 'Guest' or game.usernames[1] != 'Guest':
-                                update_games_table(game.usernames[0], game.usernames[1])
+                            if conn_to_addr[game_id_to_players[gameId][0]] != conn_to_addr[game_id_to_players[gameId][1]]:
+                                if game.usernames[0] != 'Guest' or game.usernames[1] != 'Guest':
+                                    update_games_table(game.usernames[0], game.usernames[1])
+                            else:
+                                print('game was offline so do not update leaderboard')
                             numPeopleInGame -= 2
                             numGamesCompleted += 1
                             # print(game.print_board(game.board))
@@ -393,7 +398,11 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
 
                         elif game.is_winner(2):
                             print(game.usernames)
-                            update_games_table(game.usernames[1], game.usernames[0])
+                            if conn_to_addr[game_id_to_players[gameId][0]] != conn_to_addr[game_id_to_players[gameId][1]]:
+                                if game.usernames[0] != 'Guest' or game.usernames[1] != 'Guest':
+                                    update_games_table(game.usernames[1], game.usernames[0])
+                            else:
+                                print('game was offline so do not update leaderboard')
                             numGamesCompleted += 1
                             numPeopleInGame -= 2
                             print(game.print_board(game.board))
@@ -407,7 +416,11 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
                             print('Server sent:', msg)
 
                         elif game.is_draw():
-                            update_games_table(game.usernames[0], game.usernames[1], True)
+                            if conn_to_addr[game_id_to_players[gameId][0]] != conn_to_addr[game_id_to_players[gameId][1]]:
+                                if game.usernames[0] != 'Guest' or game.usernames[1] != 'Guest':
+                                    update_games_table(game.usernames[0], game.usernames[1], True)
+                            else:
+                                print('game was offline so do not update leaderboard')
                             numGamesCompleted += 1
                             numPeopleInGame -= 2
                             msg = 'DRAW'
@@ -649,6 +662,8 @@ while True:
       #  print(client._closed)
        # client.send(str.encode('abc'))
     print("Connected to:", addr)
+    conn_to_addr[conn] = addr[0]  # connection to ip address
+
     try:
         data = conn.recv(1024).decode('utf-8')
         print('Server received2: ', data)
