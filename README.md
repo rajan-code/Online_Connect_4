@@ -5,7 +5,8 @@ Users can currently:
   - play friend online (private game)  
   - play their friend offline  
   - view the public leaderboard and the friends leaderboard  
-  - add friends  
+  - add friends 
+  - see which of their friends are currently online 
   
 Installation requirements:  
 pygame  
