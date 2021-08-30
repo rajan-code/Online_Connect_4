@@ -116,6 +116,27 @@ def get_friends(username: str) -> List[str]:
         lst.append(x[0])
     return lst
 
+
+def get_friends_with_status(username: str) -> List[Tuple[str, bool]]:
+    """
+
+    :param username:
+    :return: A list of this user's friends along with whether or not
+             they are online
+
+    >>> get_friends_with_status('baldski')
+    [('Chingers', True), ('testUser', False)]
+    """
+    friends = get_friends(username)
+    ans = []
+    for friend in friends:
+        if friend in username_to_status:
+            ans.append((friend, username_to_status[friend]))
+        else:
+            ans.append((friend, False))  # they are offline
+    return ans
+
+
 def get_email(username: str):
     cmd = f"SELECT email FROM Players WHERE username='{username}'"
     mycursor.execute(cmd)
@@ -425,6 +446,8 @@ def threaded_client(conn, p: int, gameId: int, game_type: str):
     clients.remove(conn)
     if conn in game_id_to_players[gameId]:
         game_id_to_players[gameId].remove(conn)
+        if game_type == 'public':
+            publicIdCount -= 1
     print('b ', game_id_to_players[gameId])
     conn.close()
     try:
@@ -521,6 +544,11 @@ def general_connection(conn, curr_data):
         username = curr_data[len('GENERAL_get_friends:'):]
         friends = get_friends(username)
         conn.send(pickle.dumps(friends))
+    elif curr_data[:31] == 'GENERAL_GET_FRIENDS_AND_STATUS:':
+        colon_index1 = curr_data.index(':')
+        username = curr_data[colon_index1+1:]
+        friends_and_status = get_friends_with_status(username)
+        conn.send(pickle.dumps(friends_and_status))
 
     while True:
         try:
@@ -595,10 +623,16 @@ def general_connection(conn, curr_data):
                 username = data3[len('GENERAL_get_friend_code:'):]
                 friend_code = get_friend_code(username)
                 conn.send(str.encode(friend_code))
-            elif 'GENERAL_get_friends:' in data3:
+            elif data3[:20] == 'GENERAL_get_friends:':
                 username = data3[len('GENERAL_get_friends:'):]
                 friends = get_friends(username)
                 conn.send(pickle.dumps(friends))
+            elif data3[:31] == 'GENERAL_GET_FRIENDS_AND_STATUS:':
+                colon_index1 = data3.index(':')
+                username = data3[colon_index1+1:]
+                friends_and_status = get_friends_with_status(username)
+                conn.send(pickle.dumps(friends_and_status))
+
 
         except (OSError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
             break

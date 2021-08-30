@@ -19,6 +19,7 @@ pygame.mixer.music.set_volume(0.5)  # Sets the volume of the music (0-1.0)
 WON_GAME_SOUND = pygame.mixer.Sound('music/won_game.wav')
 CLICK_SOUND = pygame.mixer.Sound('music/click_sound.wav')
 BACKGROUND_IMG = pygame.image.load('pics/menu_background.jfif')
+REFRESH_BUTTON = pygame.image.load('pics/refresh_button.png')
 
 NUM_ROWS = 6
 NUM_COLUMNS = 7
@@ -214,6 +215,75 @@ def register_user(line: str) -> None:
 def middle_of_screen(txt: pygame.Surface) -> int:
     return WIDTH // 2 - txt.get_width() // 2
 
+
+def friends_screen():
+    """
+    Precondition: player_username != ''
+    """
+    global player_username
+    screen.fill(BLACK)
+    curr_time = time.time()
+    friends_and_status = general_msgs_network.send('GENERAL_GET_FRIENDS_AND_STATUS:' + player_username)
+    screen.blit(REFRESH_BUTTON, (WIDTH - REFRESH_BUTTON.get_width(), 0))
+    refresh_rect = pygame.Rect((WIDTH - REFRESH_BUTTON.get_width(), 0, REFRESH_BUTTON.get_width(), REFRESH_BUTTON.get_height()))
+    print(friends_and_status)
+    online_friends, offline_friends = [], []
+    for friend, status in friends_and_status:
+        if status:
+            online_friends.append(friend)
+        else:
+            offline_friends.append(friend)
+
+    num_friends = len(online_friends) + len(offline_friends)
+    # TODO add refresh button
+
+    title_text = MEDIUM_FONT.render("Friends", 1, CYAN)
+    screen.blit(title_text, (middle_of_screen(title_text), 5))
+    num_friends_text = SMALL_FONT.render(str(num_friends) + " Friends", 1, WHITE)
+    screen.blit(num_friends_text, (middle_of_screen(num_friends_text), 65))
+    online_text = SMALL_FONT.render(str(len(online_friends)) + " Online", 1, GREEN)
+    offline_text = SMALL_FONT.render(str(len(offline_friends)) + " Offline", 1, RED)
+
+    screen.blit(online_text, (WIDTH//2 - online_text.get_width() - 100, 100))
+    screen.blit(offline_text, (WIDTH//2 + offline_text.get_width() + 10, 100))
+
+    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE+25, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    screen.blit(main_menu_text, (10, HEIGHT - 50))
+
+   # refresh_text = FONT2.render("Refresh")
+
+    online_horizontal, offline_horizontal = 140, 140
+    for friend in online_friends:
+        text = SMALL_FONT.render(friend, 1, WHITE)
+        screen.blit(text, (WIDTH//2 - online_text.get_width() - 130, online_horizontal))
+        pygame.draw.circle(screen, GREEN, (43, online_horizontal + 20), 8)
+        # pygame.draw.circle()
+        online_horizontal += 50
+    for friend in offline_friends:
+        text = SMALL_FONT.render(friend, 1, WHITE)
+        screen.blit(text, (WIDTH - online_text.get_width() - 130, offline_horizontal))
+        pygame.draw.circle(screen, RED, (322, offline_horizontal + 20), 8)
+        # pygame.draw.circle()
+        offline_horizontal += 50
+
+    pygame.display.update()
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                notify_server_and_leave()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
+                if main_menu_rect.collidepoint(event.pos):
+                    run = False
+                    menu_screen()
+                elif refresh_rect.collidepoint(event.pos) and curr_time + 5 < time.time():  # if it's been at least 5 seconds since last refresh
+                    friends_screen()
+
+
+# friends_screen()
 
 def leaderboard_screen(only_friends=False):
     global player_username
@@ -483,6 +553,7 @@ def register_screen():
                                             run = False
                                             menu_screen()
                                         if register_rect.collidepoint(event.pos) and the_code == code_text_input.get_text():
+                                            general_msgs_network.client.send(str.encode('GENERAL_NOW_ONLINE:' + username))
                                             line = username + '_' + email + '_' + password
                                             register_user(line)
                                             pygame.draw.rect(screen, BLACK, (0, 539, WIDTH, 69))
@@ -563,6 +634,7 @@ def login_screen():
     pygame.display.update()
     run = True
     correct_info = False
+    clicked_login = False
     print(show_password)
     while run:
         mouse_pos = pygame.mouse.get_pos()
@@ -587,10 +659,15 @@ def login_screen():
         pygame.draw.rect(screen, BLUE, (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310, 10 + twenty_chars.get_width(), 27))  # password rect
         screen.blit(password_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310))
         pygame.display.update()
+        clicked_login = False
         for event in curr_events:
             if event.type == pygame.QUIT:
                 run = False
                 notify_server_and_leave()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    clicked_login = True
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if main_menu_rect.collidepoint(event.pos):
                     run = False
@@ -607,46 +684,50 @@ def login_screen():
                     screen.blit(password_text_input.get_surface(), (WIDTH // 2 - (10 + twenty_chars.get_width() // 2), 310))
                     pygame.display.update()
                 elif login_rect.collidepoint(event.pos):
-                    errors = ''
-                    username = username_text_input.get_text()
-                    password = password_text_input.get_text()
-                    encoded_pswd = hashlib.sha256(password.encode('utf-8')).hexdigest()
-                    if is_valid_email(username):  # if they are logging in with email
-                        print('email is valid')
-                        email = username
-                        emails = general_msgs_network.send('GENERAL_get_all_emails')  # uses pickle
-                        if email in emails:
-                            expected_password = general_msgs_network.send_and_receive('GENERAL_get_password_given_email:' + email)
-                            if encoded_pswd == expected_password:  # login successful
-                                print('logging in...')
-                                correct_info = True
-                                player_username = general_msgs_network.send_and_receive('GENERAL_get_username_given_email:' + email)
+                    clicked_login = True
 
-                    else:  # they are logging in with their username
-                        usernames = general_msgs_network.send('GENERAL_get_all_usernames')  # uses pickle
-                        if username in usernames:
-                            expected_password = general_msgs_network.send_and_receive('GENERAL_get_password_given_username:' + username)
-                            if encoded_pswd == expected_password:  # login successful
-                                player_username = username
-                                correct_info = True
+            if clicked_login:
+                errors = ''
+                username = username_text_input.get_text()
+                password = password_text_input.get_text()
+                encoded_pswd = hashlib.sha256(password.encode('utf-8')).hexdigest()
+                if is_valid_email(username):  # if they are logging in with email
+                    print('email is valid')
+                    email = username
+                    emails = general_msgs_network.send('GENERAL_get_all_emails')  # uses pickle
+                    if email in emails:
+                        expected_password = general_msgs_network.send_and_receive('GENERAL_get_password_given_email:' + email)
+                        if encoded_pswd == expected_password:  # login successful
+                            print('logging in...')
+                            correct_info = True
+                            player_username = general_msgs_network.send_and_receive('GENERAL_get_username_given_email:' + email)
 
-                    if correct_info:
-                        print('logging in...')
-                        # send msg to server
-                        pygame.draw.rect(screen, BLACK, (0, 548, WIDTH, 54))
-                        text1 = SMALL_FONT.render("Signing in...", 1, GREEN)
-                        screen.blit(text1, (middle_of_screen(text1), 555))
-                        pygame.display.update()
-                        # send msg to server
-                        general_msgs_network.client.send(str.encode('GENERAL_NOW_ONLINE:' + username))
-                        pygame.time.delay(500)
-                        menu_screen()
-                    else:
-                        errors = 'Login information is invalid.'
-                        pygame.draw.rect(screen, BLACK, (0, 546, WIDTH, 54))
-                        text1 = SMALL_FONT.render(errors, 1, RED)
-                        screen.blit(text1, (middle_of_screen(text1), 555))
-                        pygame.display.update()
+                else:  # they are logging in with their username
+                    usernames = general_msgs_network.send('GENERAL_get_all_usernames')  # uses pickle
+                    if username in usernames:
+                        expected_password = general_msgs_network.send_and_receive('GENERAL_get_password_given_username:' + username)
+                        if encoded_pswd == expected_password:  # login successful
+                            player_username = username
+                            correct_info = True
+
+                if correct_info:
+                    print('logging in...')
+                    # send msg to server
+                    pygame.draw.rect(screen, BLACK, (0, 548, WIDTH, 54))
+                    text1 = SMALL_FONT.render("Signing in...", 1, GREEN)
+                    screen.blit(text1, (middle_of_screen(text1), 555))
+                    pygame.display.update()
+                    # send msg to server
+                    general_msgs_network.client.send(str.encode('GENERAL_NOW_ONLINE:' + username))
+                    pygame.time.delay(500)
+                    menu_screen()
+                else:
+                    errors = 'Login information is invalid.'
+                    pygame.draw.rect(screen, BLACK, (0, 546, WIDTH, 54))
+                    text1 = SMALL_FONT.render(errors, 1, RED)
+                    screen.blit(text1, (middle_of_screen(text1), 555))
+                    pygame.display.update()
+
 
 
 def my_account_screen():
@@ -667,7 +748,7 @@ def my_account_screen():
     screen.blit(friend_code_text, (middle_of_screen(friend_code_text), 60))
 
     stats_text = SMALL_FONT.render("Stats", 1, WHITE)
-    screen.blit(stats_text, (middle_of_screen(stats_text), 165))
+    screen.blit(stats_text, (middle_of_screen(stats_text), 105))
 
     add_friends_text = SMALL_FONT.render("Add friend", 1, WHITE)
     screen.blit(add_friends_text, (middle_of_screen(add_friends_text), HEIGHT - 255))
@@ -684,6 +765,10 @@ def my_account_screen():
     add_friends_text2 = SMALL_FONT.render("Add friend", 1, BLUE)
     screen.blit(add_friends_text2, (middle_of_screen(add_friends_text2), HEIGHT - 115))
     add_friend_rect = pygame.draw.rect(screen, BLUE, (220, 605, add_friends_text2.get_width()+5, add_friends_text2.get_height()), 1)
+
+    friends_text = SMALL_FONT.render("Friends", 1, WHITE)
+    friends_rect = pygame.draw.rect(screen, WHITE, (234, 205, friends_text.get_width() + 10, friends_text.get_height()), 1)
+    screen.blit(friends_text, (middle_of_screen(friends_text), 205))
 
     fifteen_chars = VERY_SMALL_FONT.render("M"*15, 1, BLUE)
     username_text = SMALL_FONT.render("Their username: ", 1, BLUE)
@@ -732,7 +817,10 @@ def my_account_screen():
                 if main_menu_rect.collidepoint(event.pos):
                     run = False
                     menu_screen()
-                if add_friend_rect.collidepoint(event.pos):
+                elif friends_rect.collidepoint(event.pos):
+                    run = False
+                    friends_screen()
+                elif add_friend_rect.collidepoint(event.pos):
                     errors = ''
                     # username = player_username
                     friends_username = username_text_input.get_text()
@@ -1494,6 +1582,7 @@ def menu_screen():
 
     while run:
         clock.tick(60)
+        # make refresh button instead
         curr_time = int(time.time())
         if curr_time == prev_time + 5:  # if its been 5 sec
             prev_time = curr_time
