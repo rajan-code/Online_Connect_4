@@ -727,7 +727,7 @@ def login_screen():
                     screen.blit(text1, (middle_of_screen(text1), 555))
                     pygame.display.update()
                     # send msg to server
-                    general_msgs_network.client.send(str.encode('GENERAL_NOW_ONLINE:' + username))
+                    general_msgs_network.client.send(str.encode('GENERAL_NOW_ONLINE:' + player_username))
                     pygame.time.delay(500)
                     menu_screen()
                 else:
