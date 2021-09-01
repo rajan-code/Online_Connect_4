@@ -222,7 +222,6 @@ def friends_screen():
     """
     global player_username
     screen.fill(BLACK)
-    curr_time = time.time()
     friends_and_status = general_msgs_network.send('GENERAL_GET_FRIENDS_AND_STATUS:' + player_username)
     screen.blit(REFRESH_BUTTON, (WIDTH - REFRESH_BUTTON.get_width(), 0))
     refresh_rect = pygame.Rect((WIDTH - REFRESH_BUTTON.get_width(), 0, REFRESH_BUTTON.get_width(), REFRESH_BUTTON.get_height()))
@@ -235,7 +234,6 @@ def friends_screen():
             offline_friends.append(friend)
 
     num_friends = len(online_friends) + len(offline_friends)
-    # TODO add refresh button
 
     title_text = MEDIUM_FONT.render("Friends", 1, CYAN)
     screen.blit(title_text, (middle_of_screen(title_text), 5))
@@ -248,7 +246,7 @@ def friends_screen():
     screen.blit(offline_text, (WIDTH//2 + offline_text.get_width() + 10, 100))
 
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE+25, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE+25, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 50))
 
    # refresh_text = FONT2.render("Refresh")
@@ -267,9 +265,15 @@ def friends_screen():
         # pygame.draw.circle()
         offline_horizontal += 50
 
+    curr_time = time.time()
+    updating_text = VERY_SMALL_FONT.render('Updating...', 1, WHITE)
+    screen.blit(updating_text, (WIDTH - updating_text.get_width() - 10, REFRESH_BUTTON.get_height()))
     pygame.display.update()
     run = True
     while run:
+        if curr_time + 1 < time.time():  # it's been 1 second
+            pygame.draw.rect(screen, BLACK, (440, REFRESH_BUTTON.get_height(), WIDTH-440, updating_text.get_height()))  # cover 'Updating...'
+            pygame.display.update((440, REFRESH_BUTTON.get_height(), WIDTH-440, updating_text.get_height()))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -302,7 +306,7 @@ def leaderboard_screen(only_friends=False):
     public_rect = pygame.Rect((110, 44), (public_text.get_width(), public_text.get_height()))
     friends_rect = pygame.Rect((360, 44), (friends_text.get_width(), friends_text.get_height()))
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 75))
     pygame.draw.line(screen, WHITE, (75, int(SQUARE_SIZE)), (75, HEIGHT-SQUARE_SIZE-10), 1)  # ranking
     pygame.draw.line(screen, WHITE, (225, int(SQUARE_SIZE)), (225, HEIGHT-SQUARE_SIZE-10), 1)  # username
@@ -426,7 +430,7 @@ def register_screen():
 
     clicked_username_box, clicked_email_box, clicked_password_box, clicked_code_box = False, False, False, False
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 75))
 
     register_text = SMALL_FONT.render("Register", 1, WHITE)
@@ -625,8 +629,12 @@ def login_screen():
     login_rect = pygame.draw.rect(screen, WHITE, (246, 380, login_text.get_width() + 10, login_text.get_height() + 5), 1)
     screen.blit(login_text, (middle_of_screen(login_text) + 1, 380))
 
+    forgot_pswd_text = SMALL_FONT.render("Forgot Password", 1, WHITE)
+    forgot_pswd_rect = pygame.draw.rect(screen, WHITE, (357, 461, forgot_pswd_text.get_width() + 10, forgot_pswd_text.get_height() + 5), 1)
+    screen.blit(forgot_pswd_text, (WIDTH - forgot_pswd_text.get_width() - 10, 460))
+
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 75))
 
     #TODO forgot password option
@@ -669,6 +677,7 @@ def login_screen():
                     clicked_login = True
 
             if event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
                 if main_menu_rect.collidepoint(event.pos):
                     run = False
                     menu_screen()
@@ -758,7 +767,7 @@ def my_account_screen():
 
     # username, date account created, show stats (gp, w, d, l), friends+ current status(online/offline)
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE+25, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE+25, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 50))
     print('here ', main_menu_text.get_width() + 15)
 
@@ -838,7 +847,7 @@ def my_account_screen():
                                 correct_info = True
 
                     if correct_info:
-                        pygame.draw.rect(screen, BLACK, (205, 667, WIDTH, 54))
+                        pygame.draw.rect(screen, BLACK, (211, 667, WIDTH, 54))
                         text1 = SMALL_FONT.render("Adding friend...", 1, GREEN)
                         screen.blit(text1, (middle_of_screen(text1) + 85, HEIGHT - 50))
                         add_friend(f"{player_username}_{friends_username}")
@@ -852,7 +861,7 @@ def my_account_screen():
                     else:
                         if not errors:
                             errors = 'Information is invalid'
-                        pygame.draw.rect(screen, BLACK, (205, 667, WIDTH, 54))
+                        pygame.draw.rect(screen, BLACK, (211, 667, WIDTH, 54))
                         text1 = SMALL_FONT.render(errors, 1, RED)
                         screen.blit(text1, (middle_of_screen(text1) + 85, HEIGHT - 50))
                         pygame.display.update()
@@ -903,7 +912,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
         screen.blit(text, (WIDTH // 2 - text.get_width() // 2,
                            HEIGHT // 2 - text.get_height() // 2))
         main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-        main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
+        main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
         main_menu_text.get_height() + 5), 1)
         screen.blit(main_menu_text, (10, HEIGHT - 75))
         pygame.display.update()
@@ -1053,7 +1062,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                             # msg = n.client.recv(1024).decode('utf-8')
                             run3 = True
                             main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                            main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                            main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                             pygame.draw.rect(screen, BLACK, (main_menu_text.get_width() + 20, HEIGHT - SQUARE_SIZE, WIDTH, main_menu_text.get_height() + 5))
                             screen.blit(main_menu_text, (10, HEIGHT - 75))
                             opponent_left_text = SMALL_FONT.render('Your opponent has left.', 1, WHITE)
@@ -1146,7 +1155,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 elif msg == 'opponent_left':
                     run3 = True
                     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
+                    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
                     main_menu_text.get_height() + 5), 1)
                     screen.blit(main_menu_text, (10, HEIGHT - 75))
                     opponent_left_text = SMALL_FONT.render('Your opponent has left.', 1, WHITE)
@@ -1197,7 +1206,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 print('score ', game.score)
                 pygame.draw.rect(screen, BLACK, (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
                 main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
+                main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15,
                 main_menu_text.get_height() + 5), 1)
                 screen.blit(main_menu_text, (10, HEIGHT - 75))
                 accept_text = FONT2.render("Accept", 1, WHITE)
@@ -1234,7 +1243,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     pygame.draw.rect(screen, BLACK, (0, HEIGHT - 80 - SQUARE_SIZE + 40, WIDTH, SQUARE_SIZE * 2))
                     pygame.draw.rect(screen, BLACK, (0, HEIGHT-SQUARE_SIZE*2, WIDTH//2, label.get_height()+5))
                     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                    main_menu_rect = pygame.draw.rect(screen, WHITE,(0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                     screen.blit(main_menu_text, (10, HEIGHT - 75))
                     opponent_requested_rematch = True
                     rematch_text2 = SMALL_FONT.render("Your opponent has requested a rematch.", 1, WHITE)
@@ -1271,11 +1280,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 main_menu_text = FONT2.render("Main Menu", 1,
                                                               WHITE)
                                 main_menu_rect = pygame.draw.rect(screen, WHITE,
-                                                                  (0,
-                                                                   HEIGHT - SQUARE_SIZE,
-                                                                   main_menu_text.get_width() + 15,
-                                                                   main_menu_text.get_height() + 5),
-                                                                  1)
+                                                                  (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                                 screen.blit(main_menu_text, (10, HEIGHT - 75))
                                 requested_rematch = True
                                 rematch_text2 = SMALL_FONT.render(
@@ -1307,7 +1312,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 screen.blit(rematch_text2, (WIDTH - rematch_text2.get_width() - 10, HEIGHT - 80 - SQUARE_SIZE + 30))
                                 main_menu_text = FONT2.render("Main Menu", 1, WHITE)
                                 main_menu_rect = pygame.draw.rect(screen, WHITE,
-                                                                  (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                                                                  (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                                 screen.blit(main_menu_text, (10, HEIGHT - 75))
                                 pygame.display.update()
                     try:
@@ -1318,7 +1323,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 pygame.draw.rect(screen, BLACK, (0, HEIGHT - 80 - SQUARE_SIZE + 40, WIDTH, SQUARE_SIZE * 2))
                                 pygame.draw.rect(screen, BLACK, (0, HEIGHT-SQUARE_SIZE*2, WIDTH//2, label.get_height()+5))
                                 main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-                                main_menu_rect = pygame.draw.rect(screen, WHITE,(0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+                                main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
                                 screen.blit(main_menu_text, (10, HEIGHT - 75))
                                 opponent_requested_rematch = True
                                 rematch_text2 = SMALL_FONT.render("Your opponent has requested a rematch.", 1, WHITE)
@@ -1403,7 +1408,7 @@ def setup_private_game():
                 (WIDTH // 2 - join_game_text2.get_width() // 2, 475))
     join_game_rect2 = pygame.draw.rect(screen, BLUE, (210, 478, 139, 32), 1)
     main_menu_text = FONT2.render("Main Menu", 1, WHITE)
-    main_menu_rect = pygame.draw.rect(screen, WHITE, (0, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
     screen.blit(main_menu_text, (10, HEIGHT - 75))
     clicked_text_box = False
 
@@ -1670,6 +1675,7 @@ def menu_screen():
             pygame.display.update()
             updated = False
         if show_text:
+            pygame.draw.rect(screen, BLACK, (0, 569, 405, 30))
             small_txt = VERY_SMALL_FONT.render("You must be signed in to use this feature.", 1, WHITE)
             screen.blit(small_txt, (10, HEIGHT - 150))
         else:
