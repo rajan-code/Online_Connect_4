@@ -25,6 +25,8 @@ NUM_ROWS = 6
 NUM_COLUMNS = 7
 
 RED = (255, 0, 0)
+ORANGE = (255, 140, 0)
+PURPLE = (128, 0, 128)
 YELLOW = (255, 255, 0)
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
@@ -32,6 +34,8 @@ GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
 CYAN = (0, 255, 255)
 GRAY = (128, 128, 128)
+
+COLOUR_TO_STR = {RED: 'Red', ORANGE: 'Orange', PURPLE: 'Purple', YELLOW: 'Yellow', BLUE: 'Blue', BLACK: 'Black', GREEN: 'Green', WHITE: 'White', CYAN: 'Cyan', GRAY: 'Gray'}
 
 SQUARE_SIZE = 80
 WIDTH = NUM_COLUMNS * SQUARE_SIZE
@@ -61,6 +65,10 @@ class Network:
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.port = 5555
         self.game_type = game_type  # "public" or "private"
+        self.server = 'localhost'
+        self.addr = (self.server, self.port)
+        self.client.connect(self.addr)
+        """
         try:
             self.server = "172.105.20.159"
             self.addr = (self.server, self.port)
@@ -69,6 +77,7 @@ class Network:
             self.server = 'localhost'
             self.addr = (self.server, self.port)
             self.client.connect(self.addr)
+        """
         if game_type == 'public':
             print('Client sent:', game_type)
             self.client.send(str.encode(username + ':' + game_type))
@@ -136,7 +145,7 @@ def draw_board():
     pygame.display.update()
 
 
-def updateBoard(game, row: int, col: int, player: int) -> None:
+def updateBoard(game, row: int, col: int, player: int, colour: Tuple[int, int, int]) -> None:
     """
     <player> has just placed a piece at (row, col) Update the board.
     :param row: 0-6
@@ -147,15 +156,9 @@ def updateBoard(game, row: int, col: int, player: int) -> None:
         print('Game not connected')
         font = pygame.font.SysFont("comicsans", 80)
         text = font.render("Waiting for Player...", 1, (255, 0, 0), True)
-        screen.blit(text, (WIDTH // 2 - text.get_width() // 2,
-                           HEIGHT // 2 - text.get_height() // 2))
+        screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
     else:
-        if player == 1:
-            pygame.draw.circle(screen, RED, (col * SQUARE_SIZE + SQUARE_SIZE // 2,
-                                (HEIGHT - (row + 2) * SQUARE_SIZE + SQUARE_SIZE // 2) - SQUARE_SIZE), RADIUS)
-        else:
-            pygame.draw.circle(screen, YELLOW, (
-                col * SQUARE_SIZE + SQUARE_SIZE // 2, (HEIGHT - (row + 2) * SQUARE_SIZE + SQUARE_SIZE // 2) - SQUARE_SIZE), RADIUS)
+        pygame.draw.circle(screen, colour, (col * SQUARE_SIZE + SQUARE_SIZE // 2, (HEIGHT - (row + 2) * SQUARE_SIZE + SQUARE_SIZE // 2) - SQUARE_SIZE), RADIUS)
     pygame.display.update()
 
 
@@ -502,7 +505,6 @@ def register_screen():
                         error_txt = VERY_SMALL_FONT.render(errors, 1, RED)
                         pygame.draw.rect(screen, BLACK, (0, 350, WIDTH, 60))
                         # screen.blit(error_txt, (middle_of_screen(error_txt), 395))
-                        blit_text(screen, errors, (5, 350), VERY_SMALL_FONT, RED)
                         errors = ''
                         pygame.display.update()
                     else:  # check if username and email are being used by someone else
@@ -596,6 +598,87 @@ def blit_text(surface, text, pos, font, color=pygame.Color('black')):
             x += word_width + space
         x = pos[0]  # Reset the x.
         y += word_height  # Start on new row.
+
+
+def store_screen():
+    screen.fill(BLACK)
+    player_coins = int(general_msgs_network.send_and_receive('GENERAL_GET_COINS:' + player_username))
+    # get which items this user already has
+    items_already_bought = general_msgs_network.send('GENERAL_GET_ITEMS_BOUGHT:' + player_username)
+    print(items_already_bought)
+    title_text = TITLE_FONT.render("Store", 1, (255, 255, 0))
+    screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 0))
+    if items_already_bought['differentColours'] == 0:
+        diff_colours_text = SMALL_FONT.render("Colours Package", 1, WHITE)
+        diff_colours_rect = pygame.draw.rect(screen, WHITE, (177, 102, 207, 76), 1)
+    else:
+        diff_colours_text = SMALL_FONT.render("Colours Package", 1, GRAY)
+        diff_colours_rect = pygame.draw.rect(screen, GRAY, (177, 102, 207, 76), 1)
+    screen.blit(diff_colours_text, (middle_of_screen(diff_colours_text), 100))
+    price_text = SMALL_FONT.render("Buy: 50 coins", 1, YELLOW)
+    diff_colours_buy_rect = pygame.draw.rect(screen, YELLOW, (203, 138, 155, 35), 1)
+    screen.blit(price_text, (middle_of_screen(price_text), 135))
+    curr_description = ""
+    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    screen.blit(main_menu_text, (10, HEIGHT - 75))
+    confirm_text = SMALL_FONT.render("Are you sure?", 1, WHITE)
+    yes_text = SMALL_FONT.render("Yes", 1, GREEN)
+    no_text = SMALL_FONT.render("No", 1, RED)
+    pygame.display.update()
+    # yes_rect = pygame.draw.rect(screen, GREEN, (0, 0, 0, 0), 1)
+    # no_rect = pygame.draw.rect(screen, RED, (0, 0, 0, 0), 1)
+    selected_item = None
+    run = True
+    rect_to_price = {'differentColours': 50}
+    while run:
+        mouse_pos = pygame.mouse.get_pos()
+        if diff_colours_rect.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, BLACK, (0, 518, WIDTH, 100))
+            curr_description = "Play Connect 4 with different colours such as Cyan/White and Purple/Orange"
+            # curr_desc_text = SMALL_FONT.render(curr_description, 1, WHITE)
+            # screen.blit(curr_desc_text, (middle_of_screen(curr_desc_text), HEIGHT - 100))
+            blit_text(screen, curr_description, (5, HEIGHT - 200), SMALL_FONT, WHITE)
+        else:
+            pygame.draw.rect(screen, BLACK, (0, 518, WIDTH, 100))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                notify_server_and_leave()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                print(event.pos)
+                if main_menu_rect.collidepoint(event.pos):
+                    run = False
+                    menu_screen()
+                elif diff_colours_buy_rect.collidepoint(event.pos):
+                    if items_already_bought['differentColours'] == 1:  # user has already owns this item
+                        txt = SMALL_FONT.render("You already own this item.", 1, WHITE)
+                        screen.blit(txt, (WIDTH - txt.get_width() - 10, HEIGHT - 100))
+                    else:
+                        if player_coins < rect_to_price['differentColours']:
+                            txt = SMALL_FONT.render("Cannot afford.", 1, RED)
+                            screen.blit(txt, (WIDTH - txt.get_width() - 180, HEIGHT - 100))
+                        else:
+                            selected_item = diff_colours_buy_rect
+                            screen.blit(confirm_text, (WIDTH - confirm_text.get_width() - 190, HEIGHT - 100))
+                            screen.blit(yes_text, (WIDTH - 150, HEIGHT - 100))
+                            screen.blit(no_text, (WIDTH - 60, HEIGHT - 100))
+                            yes_rect = pygame.draw.rect(screen, GREEN, (405, 622, 50, 35), 1)
+                            no_rect = pygame.draw.rect(screen, RED, (495, 622, 40, 35), 1)
+                elif selected_item == diff_colours_buy_rect and yes_rect.collidepoint(event.pos):
+                    print('clicked yes')
+                    general_msgs_network.client.send(str.encode(f'GENERAL_BOUGHT_ITEM:{player_username};differentColours,50'))
+                    txt = SMALL_FONT.render("Bought item!", 1, GREEN)
+                    pygame.draw.rect(screen, BLACK, (213, 620, WIDTH, HEIGHT))
+                    screen.blit(txt, (WIDTH - txt.get_width() - 10, HEIGHT - 100))
+                elif selected_item is not None and no_rect.collidepoint(event.pos):
+                    selected_item = None
+                    pygame.draw.rect(screen, BLACK, (213, 620, WIDTH, HEIGHT))
+                else:
+                    pygame.draw.rect(screen, BLACK, (213, 620, WIDTH, HEIGHT))
+
+        pygame.display.update()
+
 
 
 def login_screen():
@@ -875,12 +958,88 @@ def get_opponents_move(n) -> str:  # fix
         return msg
 
 
-def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_score=(0, 0), prev_went_first=0):
+def game_options(game_type='', game_code='', the_network=None, is_rematch=False, prev_score=(0, 0), prev_went_first=0):  # go to this screen before starting game
+    items_bought = general_msgs_network.send('GENERAL_GET_ITEMS_BOUGHT:' + player_username)
+    if all(value == 0 for value in items_bought.values()):  # this user has not bought any items
+        main(game_type, game_code, the_network, is_rematch, prev_score, prev_went_first)
+
+    screen.fill(BLACK)
+    title_text = TITLE_FONT.render("Options", 1, (255, 255, 0))
+    screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 0))
+    play_text = MEDIUM_FONT.render("Play!", 1, WHITE)
+    screen.blit(play_text, (middle_of_screen(play_text), HEIGHT - 100))
+    play_rect = pygame.draw.rect(screen, WHITE, (211, 625, 136, 64), 1)
+    must_choose_colours = False
+    if items_bought['differentColours'] == 1:
+        must_choose_colours = True
+        select_colours_text = MEDIUM_FONT.render("Select colours", 1, WHITE)
+        screen.blit(select_colours_text, (WIDTH // 2 - select_colours_text.get_width() // 2, 100))
+        red_and_yellow_text = SMALL_FONT.render("Red & Yellow", 1, RED)
+        red_and_yellow_rect = pygame.draw.rect(screen, YELLOW, (21, 175, 153, 35), 1)
+        screen.blit(red_and_yellow_text, (25, 175))
+        cyan_and_white_text = SMALL_FONT.render("Cyan & White", 1, CYAN)
+        cyan_and_white_rect = pygame.draw.rect(screen, WHITE, (186, 175, 168, 35), 1)
+        screen.blit(cyan_and_white_text, (190, 175))
+        purple_and_orange_text = SMALL_FONT.render("Purple & Orange", 1, PURPLE)
+        purple_and_orange_rect = pygame.draw.rect(screen, ORANGE, (357, 175, 190, 35), 1)
+        screen.blit(purple_and_orange_text, (360, 175))
+
+    pygame.display.update()
+    run = True
+    colours = []
+    while run:
+        mouse_pos = pygame.mouse.get_pos()
+        if play_rect.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, BLACK, (211, 625, 136, 64))
+            play_text = MEDIUM_FONT.render("Play!", 1, GREEN)
+            play_rect = pygame.draw.rect(screen, GREEN, (211, 625, 136, 64), 1)
+        else:
+            pygame.draw.rect(screen, BLACK, (211, 625, 136, 64))
+            play_text = MEDIUM_FONT.render("Play!", 1, WHITE)
+            play_rect = pygame.draw.rect(screen, WHITE, (211, 625, 136, 64), 1)
+        screen.blit(play_text, (middle_of_screen(play_text), HEIGHT - 100))
+        pygame.display.update(play_rect)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                notify_server_and_leave()
+            if event.type == pygame.MOUSEBUTTONUP:
+                print(event.pos)
+                if must_choose_colours and red_and_yellow_rect.collidepoint(event.pos):
+                    red_and_yellow_rect = pygame.draw.rect(screen, YELLOW, (21, 175, 153, 35), 5)
+                    pygame.draw.rect(screen, BLACK, (186, 175, 168, 35), 5)
+                    cyan_and_white_rect = pygame.draw.rect(screen, WHITE, (186, 175, 168, 35), 1)
+                    pygame.draw.rect(screen, BLACK, (357, 175, 190, 35), 5)
+                    purple_and_orange_rect = pygame.draw.rect(screen, ORANGE, (357, 175, 190, 35), 1)
+                    colours = [RED, YELLOW]
+                elif must_choose_colours and cyan_and_white_rect.collidepoint(event.pos):
+                    cyan_and_white_rect = pygame.draw.rect(screen, WHITE, (186, 175, 168, 35), 5)
+                    pygame.draw.rect(screen, BLACK, (21, 175, 153, 35), 5)
+                    red_and_yellow_rect = pygame.draw.rect(screen, YELLOW, (21, 175, 153, 35), 1)
+                    pygame.draw.rect(screen, BLACK, (357, 175, 190, 35), 5)
+                    purple_and_orange_rect = pygame.draw.rect(screen, ORANGE, (357, 175, 190, 35), 1)
+                    colours = [CYAN, WHITE]
+                elif must_choose_colours and purple_and_orange_rect.collidepoint(event.pos):
+                    purple_and_orange_rect = pygame.draw.rect(screen, ORANGE, (357, 175, 190, 35), 5)
+                    pygame.draw.rect(screen, BLACK, (21, 175, 153, 35), 5)
+                    red_and_yellow_rect = pygame.draw.rect(screen, YELLOW, (21, 175, 153, 35), 1)
+                    pygame.draw.rect(screen, BLACK, (186, 175, 168, 35), 5)
+                    cyan_and_white_rect = pygame.draw.rect(screen, WHITE, (186, 175, 168, 35), 1)
+                    colours = [PURPLE, ORANGE]
+                elif must_choose_colours and colours != [] and play_rect.collidepoint(event.pos):
+                    main(game_type, game_code, the_network, is_rematch, prev_score, prev_went_first, colours)
+
+
+
+        pygame.display.update()
+
+
+
+def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_score=(0, 0), prev_went_first=0, colours=[RED, YELLOW]):
     global player_username, music_on
     run = True
     clock = pygame.time.Clock()
     screen.fill(BLACK)
-    player_to_colour = {0: RED, 1: YELLOW}
+    player_to_colour = {0: colours[0], 1: colours[1]}
     if not is_rematch:
         if not the_network:
             if not player_username:
@@ -893,8 +1052,6 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
 
         player = int(n.getP())  # 0 or 1
         screen.fill(BLACK)
-        # p0 is red and p1 is yellow
-        player_to_colour = {0: RED, 1: YELLOW}
         print("You are player", player)
         if not player_username:
             msg = 'P' + str(player) + 'ready:Guest'
@@ -955,9 +1112,9 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
         goes_first = 0  # if this is the first game, p0 goes first
 
         if player == 0:
-            label = font1.render("Your turn", 1, RED)
+            label = font1.render("Your turn", 1, player_to_colour[0])
         else:
-            label = font1.render("Opponent's turn", 1, RED)
+            label = font1.render("Opponent's turn", 1, player_to_colour[0])
     else:
         n = the_network
         print('old player ', n.p)
@@ -972,19 +1129,19 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
         goes_first = int(not prev_went_first)
         msg = str(goes_first) + '_move'
         if player == goes_first:
-            label = font1.render("Your turn", 1, RED)
+            label = font1.render("Your turn", 1, player_to_colour[0])
         else:
-            label = font1.render("Opponent's turn", 1, RED)
+            label = font1.render("Opponent's turn", 1, player_to_colour[0])
         text = MEDIUM_FONT.render("Starting rematch...", 1, CYAN, True)
         screen.blit(text, (WIDTH // 2 - text.get_width() // 2,
                            HEIGHT // 2 - text.get_height() // 2))
 
     # both players have joined the game
-    if goes_first == 0:  # red goes first
-        goes_first_text = SMALL_FONT.render("Red goes first", 1, RED)
+    if goes_first == 0:  # p0 goes first
+        goes_first_text = SMALL_FONT.render(f"{COLOUR_TO_STR[player_to_colour[0]]} goes first", 1, player_to_colour[0])
         screen.blit(goes_first_text, (middle_of_screen(goes_first_text), HEIGHT // 2 - goes_first_text.get_height() // 2 + text.get_height() + 10))
     else:
-        goes_first_text = SMALL_FONT.render("Yellow goes first", 1, YELLOW)
+        goes_first_text = SMALL_FONT.render(f"{COLOUR_TO_STR[player_to_colour[1]]} goes first", 1, player_to_colour[1])
         screen.blit(goes_first_text, (middle_of_screen(goes_first_text), HEIGHT // 2 - goes_first_text.get_height() // 2 + text.get_height() + 10))
     pygame.display.update()
     pygame.time.wait(1500)
@@ -1024,9 +1181,9 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     pygame.draw.rect(screen, BLACK, (0, 0, WIDTH, SQUARE_SIZE))
                     x_pos = event.pos[0]
                     if player == 0:
-                        pygame.draw.circle(screen, RED, (x_pos, SQUARE_SIZE // 2), RADIUS)
+                        pygame.draw.circle(screen, player_to_colour[0], (x_pos, SQUARE_SIZE // 2), RADIUS)
                     else:
-                        pygame.draw.circle(screen, YELLOW, (x_pos, SQUARE_SIZE // 2), RADIUS)
+                        pygame.draw.circle(screen, player_to_colour[1], (x_pos, SQUARE_SIZE // 2), RADIUS)
                     pygame.display.update()
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -1039,7 +1196,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                         the_row = game.get_next_open_row(column)
                         print('the row', the_row)
                         game.drop_piece(the_row, column, player + 1)
-                        updateBoard(game, the_row, column, player + 1)
+                        if player + 1 == 1:
+                            updateBoard(game, the_row, column, player + 1, player_to_colour[0])
+                        else:
+                            updateBoard(game, the_row, column, player + 1, player_to_colour[1])
                         # print(game.board)
                         label = font1.render("Opponent's turn", 1,
                                              player_to_colour[player])
@@ -1089,7 +1249,6 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
 
                             # player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
                             # game.drop_piece(row, col, player_who_just_moved + 1)
-                            # updateBoard(game, row, col, player_who_just_moved + 1)
                             # game.print_board(game.board)
                             # break
 
@@ -1110,21 +1269,15 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                             notify_server_and_leave()
                         if event.type == pygame.MOUSEMOTION:
                             # print('mouse moved')
-                            pygame.draw.rect(screen, BLACK,
-                                             (0, 0, WIDTH, SQUARE_SIZE))
+                            pygame.draw.rect(screen, BLACK, (0, 0, WIDTH, SQUARE_SIZE))
                             x_pos = event.pos[0]
                             if player == 0:
-                                pygame.draw.circle(screen, RED,
-                                                   (x_pos, SQUARE_SIZE // 2),
-                                                   RADIUS)
+                                pygame.draw.circle(screen, player_to_colour[0], (x_pos, SQUARE_SIZE // 2), RADIUS)
                             else:
-                                pygame.draw.circle(screen, YELLOW,
-                                                   (x_pos, SQUARE_SIZE // 2),
-                                                   RADIUS)
+                                pygame.draw.circle(screen, player_to_colour[1], (x_pos, SQUARE_SIZE // 2), RADIUS)
                             pygame.display.update()
                     try:
-                        msg = n.client.recv(1024).decode(
-                            'utf-8')  # 1:(0,1) get opponent's move
+                        msg = n.client.recv(1024).decode('utf-8')  # 1:(0,1) get opponent's move
                         print('received opponents move')
                         break
                     except BlockingIOError:
@@ -1147,7 +1300,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                     pygame.mixer.Sound.play(CLICK_SOUND)
                     player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
                     game.drop_piece(row, col, player_who_just_moved + 1)
-                    updateBoard(game, row, col, player_who_just_moved + 1)
+                    if player_who_just_moved + 1 == 1:
+                        updateBoard(game, row, col, player_who_just_moved + 1, player_to_colour[0])
+                    else:
+                        updateBoard(game, row, col, player_who_just_moved + 1, player_to_colour[1])
                     game.print_board(game.board)
                     game.turn = int(not player_who_just_moved)  # can remove game.turn stuff
                     msg = msg[7:]
@@ -1185,7 +1341,10 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 pygame.mixer.Sound.play(CLICK_SOUND)
                 player_who_just_moved, row, col = int(msg[0]), int(msg[3]), int(msg[5])
                 game.drop_piece(row, col, player_who_just_moved + 1)
-                updateBoard(game, row, col, player_who_just_moved + 1)
+                if player_who_just_moved + 1 == 1:
+                    updateBoard(game, row, col, player_who_just_moved + 1, player_to_colour[0])
+                else:
+                    updateBoard(game, row, col, player_who_just_moved + 1, player_to_colour[1])
                 game.print_board(game.board)
                 game.turn = int(not player_who_just_moved)  # can remove game.turn stuff
                 try:
@@ -1292,16 +1451,13 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 print('Client sent: ', 'rematch_requested')
                                 n.client.setblocking(False)  # make socket non-blocking
 
-                            if accept_rect.collidepoint(
-                                    event.pos) and opponent_requested_rematch:  # accept rematch offer
-                                n.client.setblocking(
-                                    True)  # make socket blocking
+                            if accept_rect.collidepoint(event.pos) and opponent_requested_rematch:  # accept rematch offer
+                                n.client.setblocking(True)  # make socket blocking
                                 n.client.send(str.encode('rematch_accepted'))
                                 print('Client sent: ', 'rematch_accepted')
                                 # n.client.send(str.encode(game_type))
                                 # n.p = n.connect()
-                                main(game_type, game_code, n, True,
-                                     tuple(game.score), goes_first)
+                                main(game_type, game_code, n, True, tuple(game.score), goes_first, colours)
 
                             if reject_rect.collidepoint(event.pos) and opponent_requested_rematch:
                                 rejected_rematch = True
@@ -1338,8 +1494,7 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                                 n.client.setblocking(True)  # make socket blocking
                                 # n.client.send(str.encode(game_type))
                                 # n.p = n.connect()
-                                main(game_type, game_code, n, True,
-                                     tuple(game.score), goes_first)
+                                main(game_type, game_code, n, True, tuple(game.score), goes_first, colours)
 
                             elif msg == 'rematch_rejected':
                                 rejected_rematch = True
@@ -1377,7 +1532,6 @@ def main(game_type='', game_code='', the_network=None, is_rematch=False, prev_sc
                 n.client.setblocking(True)  # make socket blocking
                 # run = False
 
-            # updateBoard(game, 0, 3, 0)
             pygame.draw.rect(screen, BLACK,
                              (0, HEIGHT - SQUARE_SIZE * 2, WIDTH, SQUARE_SIZE))
             screen.blit(label, (15, HEIGHT - 75 - SQUARE_SIZE))
@@ -1478,7 +1632,11 @@ def setup_private_game():
                     game_code = game_code[13:]
                     print('Client received: game code', game_code)
                     run = False
-                    main('private', game_code, n, False)  # here
+                    if player_username != '':
+                        game_options('private', game_code, n, False)
+                    else:
+                        main('private', game_code, n, False)
+                    # main('private', game_code, n, False)  # here
         screen.blit(join_game_text2, (WIDTH // 2 - join_game_text2.get_width() // 2, 475))
         screen.blit(host_game_text, (WIDTH // 2 - host_game_text.get_width() // 2, 275))
         pygame.display.update()
@@ -1505,6 +1663,7 @@ def menu_screen():
     screen.blit(BACKGROUND_IMG, (0, 0))
     screen.blit(REFRESH_BUTTON, (WIDTH - REFRESH_BUTTON.get_width(), 0))
     refresh_rect = pygame.Rect((WIDTH - REFRESH_BUTTON.get_width(), 0, REFRESH_BUTTON.get_width(), REFRESH_BUTTON.get_height()))
+
     if player_username == '':  # if user is not signed in
         username_text = VERY_SMALL_FONT.render('Playing as Guest', 1, WHITE)
         leaderboard_text = FONT2.render("Leaderboard", 1, GRAY)
@@ -1521,10 +1680,18 @@ def menu_screen():
         leaderboard_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE+25, leaderboard_text.get_width() + 15, leaderboard_text.get_height() + 5), 1)
         my_account_text = FONT2.render("My Account", 1, WHITE)
         my_account_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE+25-(leaderboard_text.get_height() + 5)-5, my_account_text.get_width() + 15, my_account_text.get_height() + 5), 1)
+        store_text = SMALL_FONT.render("Store", 1, WHITE)
+        store_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE+25 - (leaderboard_text.get_height() + 5) - (my_account_text.get_height()+5)-5, store_text.get_width() + 15, store_text.get_height() + 5), 1)
         register_text = SMALL_FONT.render("Register", 1, GRAY)
         login_text = SMALL_FONT.render("Login", 1, GRAY)
         register_rect = pygame.draw.rect(screen, GRAY, (WIDTH // 2 - register_text.get_width() - 40, 180, register_text.get_width() + 10, register_text.get_height() + 5), 1)
-        login_rect = pygame.draw.rect(screen, GRAY, (WIDTH // 2 + 30, 180, login_text.get_width() + 10, login_text.get_height() + 5), 1)
+        login_rect = pygame.draw.rect(screen, GRAY, (WIDTH // 2 + 30, 180, store_text.get_width() + 10, store_text.get_height() + 5), 1)
+        coins = general_msgs_network.send_and_receive('GENERAL_GET_COINS:' + player_username)
+        coins_text = VERY_SMALL_FONT.render(f"{coins} coins", 1, YELLOW)
+        coins_info_text = VERY_SMALL_FONT.render("Coins are earned by winning online public games.", 1, WHITE)
+        coins_info_rect = pygame.Rect((0, 38), (96, 22))
+        screen.blit(coins_text, (5, 35))
+        screen.blit(store_text, (12, HEIGHT - 170 + 10))
 
     screen.blit(my_account_text, (10, HEIGHT - 110))
     screen.blit(leaderboard_text, (10, HEIGHT - 50))
@@ -1586,6 +1753,7 @@ def menu_screen():
     pygame.display.update()
     pointer = 185 + 70
     show_text = False  # show_text is for showing 'You must be signed in to use this feature...'
+    show_coins_info_text = False
     updating_text = VERY_SMALL_FONT.render('Updating...', 1, WHITE)
     screen.blit(updating_text, (WIDTH - updating_text.get_width() - 10, HEIGHT - 80))
 
@@ -1602,12 +1770,16 @@ def menu_screen():
                 if public_rect.collidepoint(event.pos):  # public game
                     curr_screen_is_menu_screen = False
                     print('public game')
+                    if player_username != '':
+                        game_options('public', '', None, False)
+                    else:
+                        main('public', '', None, False)
                     # run = False
-                    main('public', '', None, False)
+                    # main('public', '', None, False)
                 elif refresh_rect.collidepoint(event.pos) and curr_time + 5 < time.time():
                     curr_time = time.time()
                     num_people_online, num_people_in_game = refresh()  # refresh number of people in game
-                    pygame.draw.rect(screen, BLACK, (246, 667, WIDTH-246, HEIGHT-656))
+                    pygame.draw.rect(screen, BLACK, (246, 655, WIDTH-246, HEIGHT-655))
                     updating_text = VERY_SMALL_FONT.render('Updating...', 1, WHITE)
                     num_people_online_text = VERY_SMALL_FONT.render('Number of players online: ' + str(num_people_online), 1, WHITE)
                     num_ppl_in_game_text = VERY_SMALL_FONT.render('Number of players in a game: ' + str(num_people_in_game), 1, WHITE)
@@ -1633,6 +1805,8 @@ def menu_screen():
                     my_account_screen()
                 elif leaderboard_rect.collidepoint(event.pos) and player_username:
                     leaderboard_screen()
+                elif player_username and store_rect.collidepoint(event.pos):
+                    store_screen()
                 # draw_board()
             mouse_pos = pygame.mouse.get_pos()
             # if event.type == pygame.MOUSEMOTION:
@@ -1640,6 +1814,8 @@ def menu_screen():
                 show_text = True
             else:
                 show_text = False
+            show_coins_info_text = (player_username and coins_info_rect.collidepoint(mouse_pos))
+            # print(show_text)
 
             if public_rect.collidepoint(mouse_pos):  # public game
                 public_text = SMALL_FONT.render("Public", 1, GREEN)
@@ -1671,6 +1847,7 @@ def menu_screen():
                 vs_cpu_rect = pygame.draw.rect(screen, WHITE, (WIDTH // 2 - vs_cpu_text.get_width() // 2, 375 + 55 - 5, vs_cpu_text.get_width() + 10, vs_cpu_text.get_height() + 5), 1)
 
         if updated and curr_time + 1 < time.time():
+            pygame.draw.rect(screen, BLACK, (246, 655, WIDTH-246, 15))
             pygame.draw.rect(screen, BLACK, (440, 639, WIDTH-440, updating_text.get_height()))  # cover 'Updating...'
             pygame.display.update()
             updated = False
@@ -1678,8 +1855,15 @@ def menu_screen():
             pygame.draw.rect(screen, BLACK, (0, 569, 405, 30))
             small_txt = VERY_SMALL_FONT.render("You must be signed in to use this feature.", 1, WHITE)
             screen.blit(small_txt, (10, HEIGHT - 150))
-        else:
+        elif player_username == '':
             pygame.draw.rect(screen, BLACK, (0, 569, 405, 30))
+        if show_coins_info_text:
+            pygame.draw.rect(screen, BLACK, (0, 59, 473, 23))
+            screen.blit(coins_info_text, (5, 55))
+
+        elif player_username:
+            pygame.draw.rect(screen, BLACK, (0, 59, 473, 23))
+            # screen.blit(BACKGROUND_IMG, (0, 0))
 
         screen.blit(public_text, (WIDTH // 2 - public_text.get_width() - 35,
                                   pointer + online_text.get_height()))
@@ -1693,5 +1877,4 @@ def menu_screen():
 if __name__ == '__main__':
     # while True:
     general_msgs_network.client.send(str.encode('GENERAL_someone_joined'))
-    time.sleep(0.5)
     menu_screen()

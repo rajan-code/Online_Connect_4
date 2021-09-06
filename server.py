@@ -61,6 +61,11 @@ class Server:
 
 
 # Database functions
+def get_coins(username: str) -> int:
+    mycursor.execute(f"SELECT coins FROM Store WHERE username='{username}'")
+    return int(mycursor.fetchone()[0])
+
+
 def get_top_ten_public():
     lst = []
     mycursor.execute("SELECT * FROM Games ORDER BY pointsPercentage DESC")
@@ -167,11 +172,13 @@ def add_user_to_database(username, email, pswd) -> None:
     Add this new user to the database.
     """
     print('adding user')
-    insert = f"INSERT INTO Players (username, email, password, dateCreated) VALUES ('{username}', '{email}', '{pswd}', CURDATE())"
+    insert = f"INSERT IGNORE INTO Players (username, email, password, dateCreated) VALUES ('{username}', '{email}', '{pswd}', CURDATE())"
     mycursor.execute(insert)
-    insert2 = f"INSERT INTO Games (username, pointsPercentage) VALUES ('{username}', 0.000)"
+    insert2 = f"INSERT IGNORE INTO Games (username, pointsPercentage) VALUES ('{username}', 0.000)"
     mycursor.execute(insert2)
     mycursor.execute(f"UPDATE Players SET friendCode = FLOOR(RAND()*(99999-10000)+10000) WHERE username='{username}'")
+    insert3 = f"INSERT IGNORE INTO Store (username) VALUES ('{username}')"
+    mycursor.execute(insert3)
     db.commit()
 
 
@@ -200,9 +207,44 @@ def get_friend_code(username: str) -> str:
     return str(mycursor.fetchone()[0])
 
 
+def update_store_table(username: str, item_bought: str, price: int):
+    print(username, item_bought, price)
+    cmd2 = f"SELECT {item_bought} FROM Store WHERE username='{username}'"
+    mycursor.execute(cmd2)
+    curr_status = int(mycursor.fetchone()[0])
+    if curr_status != 1:
+        cmd1 = f"UPDATE Store SET coins = coins - {price} WHERE username='{username}'"
+        mycursor.execute(cmd1)
+        cmd2 = f"UPDATE Store SET {item_bought} = 1 WHERE username='{username}'"
+        mycursor.execute(cmd2)
+        db.commit()
+    else:
+        print(f"{username} already owns this item.")
+
+
+def get_items_bought(username: str) -> Dict[str, int]:
+    """
+    Return a dict that maps the name of an item in the store (e.g.
+    differentColours) and whether or not this user owns it (0 or 1)
+    """
+    columns = []
+    ans = dict()
+    cmd1 = f"SHOW COLUMNS FROM Store"
+    mycursor.execute(cmd1)
+    for x in mycursor:
+        columns.append(x[0])
+    columns = columns[2:]
+    for col in columns:
+        cmd1 = f"SELECT {col} FROM Store WHERE username='{username}'"
+        mycursor.execute(cmd1)
+        ans[col] = int(mycursor.fetchone()[0])
+    return ans
+
+
 def update_games_table(winner: str, loser: str, is_draw=False):
     """
-    Update the games table.
+    Update the games table. Also, update the coins of the winner in the Store
+    table.
     :param winner: The username of the winner of the game.
     :param loser: The username of the loser of the game.
     :param is_draw: True iff the game was a draw.
@@ -211,6 +253,8 @@ def update_games_table(winner: str, loser: str, is_draw=False):
     if winner != 'Guest':
         cmd1 = f"UPDATE LOW_PRIORITY Games SET gamesPlayed = gamesPlayed + 1 WHERE username='{winner}'"
         mycursor.execute(cmd1)
+        cmd = f"UPDATE LOW_PRIORITY Store SET coins = coins + 10 WHERE username='{winner}'"
+        mycursor.execute(cmd)
     if loser != 'Guest':
         cmd1 = f"UPDATE LOW_PRIORITY Games SET gamesPlayed = gamesPlayed + 1 WHERE username='{loser}'"
         mycursor.execute(cmd1)
@@ -562,6 +606,25 @@ def general_connection(conn, curr_data):
         username = curr_data[colon_index1+1:]
         friends_and_status = get_friends_with_status(username)
         conn.send(pickle.dumps(friends_and_status))
+    elif curr_data[:18] == 'GENERAL_GET_COINS:':
+        colon_index1 = curr_data.index(':')
+        username = curr_data[colon_index1 + 1:]
+        coins = get_coins(username)
+        conn.send(str.encode(str(coins)))
+    elif curr_data[:20] == 'GENERAL_BOUGHT_ITEM:':
+        colon_index1 = curr_data.index(':')
+        semicolon_index = curr_data.index(';')
+        comma_index = curr_data.index(',')
+        username = curr_data[colon_index1 + 1:semicolon_index]
+        item_bought = curr_data[semicolon_index + 1: comma_index]
+        price = int(curr_data[comma_index + 1:])
+        print('updating store table')
+        update_store_table(username, item_bought, price)
+    elif curr_data[:25] == 'GENERAL_GET_ITEMS_BOUGHT:':
+        colon_index1 = curr_data.index(':')
+        username = curr_data[colon_index1 + 1:]
+        items_bought = get_items_bought(username)
+        conn.send(pickle.dumps(items_bought))
 
     while True:
         try:
@@ -645,7 +708,25 @@ def general_connection(conn, curr_data):
                 username = data3[colon_index1+1:]
                 friends_and_status = get_friends_with_status(username)
                 conn.send(pickle.dumps(friends_and_status))
-
+            elif data3[:18] == 'GENERAL_GET_COINS:':
+                colon_index1 = data3.index(':')
+                username = data3[colon_index1 + 1:]
+                coins = get_coins(username)
+                conn.send(str.encode(str(coins)))
+            elif data3[:20] == 'GENERAL_BOUGHT_ITEM:':
+                colon_index1 = data3.index(':')
+                semicolon_index = data3.index(';')
+                comma_index = data3.index(',')
+                username = data3[colon_index1 + 1:semicolon_index]
+                item_bought = data3[semicolon_index + 1: comma_index]
+                price = int(data3[comma_index + 1:])
+                print('updating store table')
+                update_store_table(username, item_bought, price)
+            elif data3[:25] == 'GENERAL_GET_ITEMS_BOUGHT:':
+                colon_index1 = data3.index(':')
+                username = data3[colon_index1 + 1:]
+                items_bought = get_items_bought(username)
+                conn.send(pickle.dumps(items_bought))
 
         except (OSError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
             break
