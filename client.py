@@ -967,6 +967,10 @@ def game_options(game_type='', game_code='', the_network=None, is_rematch=False,
     play_text = MEDIUM_FONT.render("Play!", 1, WHITE)
     screen.blit(play_text, (middle_of_screen(play_text), HEIGHT - 100))
     play_rect = pygame.draw.rect(screen, WHITE, (211, 625, 136, 64), 1)
+
+    main_menu_text = FONT2.render("Main Menu", 1, WHITE)
+    main_menu_rect = pygame.draw.rect(screen, WHITE, (5, HEIGHT - SQUARE_SIZE, main_menu_text.get_width() + 15, main_menu_text.get_height() + 5), 1)
+    screen.blit(main_menu_text, (10, HEIGHT - 75))
     must_choose_colours = False
     if items_bought['differentColours'] == 1:
         must_choose_colours = True
@@ -1025,6 +1029,9 @@ def game_options(game_type='', game_code='', the_network=None, is_rematch=False,
                     colours = [PURPLE, ORANGE]
                 elif must_choose_colours and colours != [] and play_rect.collidepoint(event.pos):
                     main(game_type, game_code, the_network, is_rematch, prev_score, prev_went_first, colours)
+                elif main_menu_rect.collidepoint(event.pos):
+                    run = False
+                    menu_screen()
 
 
 
@@ -1616,8 +1623,7 @@ def setup_private_game():
                     if msg == 'joined_game_successfully':
                         main('private', '', n, False)  # here
                     elif msg == 'joined_game_failed':
-                        incorrect_code_text = SMALL_FONT.render(
-                            "Incorrect code.", 1, RED)
+                        incorrect_code_text = SMALL_FONT.render("Incorrect code.", 1, RED)
                         screen.blit(incorrect_code_text, (WIDTH // 2 - incorrect_code_text.get_width() // 2, 475 + join_game_text2.get_height()))
 
                 if host_game_rect.collidepoint(event.pos):
@@ -1686,8 +1692,6 @@ def menu_screen():
         login_rect = pygame.draw.rect(screen, GRAY, (WIDTH // 2 + 30, 180, store_text.get_width() + 10, store_text.get_height() + 5), 1)
         coins = general_msgs_network.send_and_receive('GENERAL_GET_COINS:' + player_username)
         coins_text = VERY_SMALL_FONT.render(f"{coins} coins", 1, YELLOW)
-        coins_info_text = VERY_SMALL_FONT.render("Coins are earned by winning online public games.", 1, WHITE)
-        coins_info_rect = pygame.Rect((0, 38), (96, 22))
         screen.blit(coins_text, (5, 35))
         screen.blit(store_text, (12, HEIGHT - 170 + 10))
 
@@ -1751,7 +1755,6 @@ def menu_screen():
     pygame.display.update()
     pointer = 185 + 70
     show_text = False  # show_text is for showing 'You must be signed in to use this feature...'
-    show_coins_info_text = False
     updating_text = VERY_SMALL_FONT.render('Updating...', 1, WHITE)
     screen.blit(updating_text, (WIDTH - updating_text.get_width() - 10, HEIGHT - 80))
 
@@ -1812,7 +1815,6 @@ def menu_screen():
                 show_text = True
             else:
                 show_text = False
-            show_coins_info_text = (player_username and coins_info_rect.collidepoint(mouse_pos))
             # print(show_text)
 
             if public_rect.collidepoint(mouse_pos):  # public game
@@ -1855,13 +1857,6 @@ def menu_screen():
             screen.blit(small_txt, (10, HEIGHT - 150))
         elif player_username == '':
             pygame.draw.rect(screen, BLACK, (0, 569, 405, 30))
-        if show_coins_info_text:
-            pygame.draw.rect(screen, BLACK, (0, 59, 473, 23))
-            screen.blit(coins_info_text, (5, 55))
-
-        elif player_username:
-            pygame.draw.rect(screen, BLACK, (0, 59, 473, 23))
-            # screen.blit(BACKGROUND_IMG, (0, 0))
 
         screen.blit(public_text, (WIDTH // 2 - public_text.get_width() - 35,
                                   pointer + online_text.get_height()))
