@@ -7,6 +7,8 @@ Users can currently:
   - view the public leaderboard and the friends leaderboard  
   - add friends 
   - see which of their friends are currently online 
+  - Earn coins by winning online public games  
+  - Spend coins in the store to unlock new features  
   
 Installation requirements:  
 pygame, numpy   
