@@ -65,10 +65,9 @@ class Network:
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.port = 5555
         self.game_type = game_type  # "public" or "private"
-        self.server = 'localhost'
-        self.addr = (self.server, self.port)
-        self.client.connect(self.addr)
-        """
+        # self.server = 'localhost'
+        # self.addr = (self.server, self.port)
+        # self.client.connect(self.addr)
         try:
             self.server = "172.105.20.159"
             self.addr = (self.server, self.port)
@@ -77,7 +76,6 @@ class Network:
             self.server = 'localhost'
             self.addr = (self.server, self.port)
             self.client.connect(self.addr)
-        """
         if game_type == 'public':
             print('Client sent:', game_type)
             self.client.send(str.encode(username + ':' + game_type))
