@@ -69,7 +69,7 @@ class Network:
         # self.addr = (self.server, self.port)
         # self.client.connect(self.addr)
         try:
-            self.server = "172.105.20.159"
+            self.server = "170.187.181.231"
             self.addr = (self.server, self.port)
             self.client.connect(self.addr)
         except ConnectionRefusedError:

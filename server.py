@@ -16,7 +16,7 @@ from typing import *
 pygame.init()
 
 db = mysql.connector.connect(
-    host='172.105.20.159',
+    host='170.187.181.231',
     user='rajan',
     passwd=os.environ.get('SQL_PASSWORD'),
     database='Online_Connect_4'
